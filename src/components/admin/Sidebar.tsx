@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, 
-  Layers, 
+  Tag, 
   Users, 
-  FileText, 
+  ClipboardList, 
   PenTool, 
   Mail, 
   Receipt, 
@@ -14,12 +13,12 @@ import {
   Settings 
 } from "lucide-react";
 import Image from "next/image";
+import STCLogo from "@/app/assets/image/STC.png";
 
 const navigation = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { name: "Services", href: "/admin/services", icon: Layers },
+  { name: "Specialists", href: "/admin", icon: Tag },
   { name: "Clients", href: "/admin/clients", icon: Users },
-  { name: "Service Orders", href: "/admin/orders", icon: FileText },
+  { name: "Service Orders", href: "/admin/orders", icon: ClipboardList },
   { name: "eSignature", href: "/admin/esignature", icon: PenTool },
   { name: "Messages", href: "/admin/messages", icon: Mail },
   { name: "Invoices & Receipts", href: "/admin/invoices", icon: Receipt },
@@ -40,8 +39,14 @@ export default function AdminSidebar() {
   return (
     <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
       <div className="flex h-16 shrink-0 items-center gap-2 mt-4">
-         <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-             <span className="text-xs font-bold text-blue-800">STC</span>
+         <div className="h-8 w-auto relative">
+             <Image
+              src={STCLogo}
+              alt="STC Logo"
+              width={32}
+              height={32}
+              className="h-8 w-auto object-contain"
+             />
          </div>
           <div className="flex flex-col">
               <span className="font-semibold text-gray-900 text-sm">Consistant CoSec Services</span>

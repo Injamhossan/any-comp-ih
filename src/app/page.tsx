@@ -39,8 +39,8 @@ const SPECIALISTS = [
     role: "Company Secretary",
     description: "Register your Company with the best Company Secretary in KL",
     price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1598550874175-6e9f1a0e8d39?auto=format&fit=crop&q=80&w=800", // Another woman professional
-    avatarSrc: "https://images.unsplash.com/photo-1598550874175-6e9f1a0e8d39?auto=format&fit=crop&q=80&w=100",
+    imageSrc: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=800", // Woman professional
+    avatarSrc: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=100",
   },
   {
     id: 5,
@@ -75,8 +75,8 @@ const SPECIALISTS = [
     role: "Company Secretary",
     description: "Register your Company with the best Company Secretary in KL",
     price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1573166368351-b7033ddc536c?auto=format&fit=crop&q=80&w=800", // Hijab handshake
-    avatarSrc: "https://images.unsplash.com/photo-1573166368351-b7033ddc536c?auto=format&fit=crop&q=80&w=100",
+    imageSrc: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800", // Team working
+    avatarSrc: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=100",
   },
   {
     id: 9,
@@ -84,8 +84,8 @@ const SPECIALISTS = [
     role: "Company Secretary",
     description: "Register your Company with the best Company Secretary in KL",
     price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1554196344-32690c8dd76c?auto=format&fit=crop&q=80&w=800", // Office laptop
-    avatarSrc: "https://images.unsplash.com/photo-1554196344-32690c8dd76c?auto=format&fit=crop&q=80&w=100",
+    imageSrc: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800", // Handshake
+    avatarSrc: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=100",
   },
   {
     id: 10,
