@@ -75,6 +75,7 @@ model Media {
   file_name     String
   file_size     Int
   display_order Int       @default(0)
+  url           String
   mime_type     MimeType
   media_type    MediaType
   uploaded_at   DateTime  @default(now())

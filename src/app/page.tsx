@@ -1,122 +1,48 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import SpecialistCard from "@/components/SpecialistCard";
-import { ChevronRight, Home, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { ChevronRight, Home, ChevronDown } from "lucide-react";
 
-// Mock data to match the screenshot
-const SPECIALISTS = [
-  {
-    id: 1,
-    name: "Adam Low",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800", // Business man
-    avatarSrc: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 2,
-    name: "Jessica Law",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800", // Business woman
-    avatarSrc: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 3,
-    name: "Stacey Lim",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=800", // Another woman
-    avatarSrc: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 4,
-    name: "Stacey Lim",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=800", // Woman professional
-    avatarSrc: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 5,
-    name: "Sarah Wong",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?auto=format&fit=crop&q=80&w=800", // Woman glasses
-    avatarSrc: "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 6,
-    name: "Siddesh A/L",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=800", // Man yellow bg
-    avatarSrc: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 7,
-    name: "Siti Hisham",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=800", // Hijab
-    avatarSrc: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 8,
-    name: "Alia Marissa",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800", // Team working
-    avatarSrc: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 9,
-    name: "Sarah Wong",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800", // Handshake
-    avatarSrc: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 10,
-    name: "John Doe",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=800", // Man glasses
-    avatarSrc: "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 11,
-    name: "Jane Smith",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800", // Meeting
-    avatarSrc: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 12,
-    name: "Devid Kumar",
-    role: "Company Secretary",
-    description: "Register your Company with the best Company Secretary in KL",
-    price: "RM 1,600",
-    imageSrc: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800", // Man suit
-    avatarSrc: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=100",
-  }
-];
+// Interface matching the backend response
+interface Specialist {
+  id: string;
+  title: string;
+  description: string;
+  final_price: number;
+  duration_days: number;
+  is_draft: boolean;
+  // properties for mapped UI
+  // properties for mapped UI
+  media?: { url: string }[];
+}
 
 export default function Page() {
+  const [specialists, setSpecialists] = useState<Specialist[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSpecialists = async () => {
+      try {
+        const res = await fetch('/api/specialists');
+        const data = await res.json();
+        if (data.success) {
+          // Filter out drafts for public view
+          const published = data.data.filter((s: Specialist) => !s.is_draft);
+          setSpecialists(published);
+        }
+      } catch (error) {
+        console.error("Failed to fetch specialists", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSpecialists();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
       <Navbar />
@@ -157,17 +83,23 @@ export default function Page() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {SPECIALISTS.map((specialist) => (
-            <SpecialistCard
-              key={specialist.id}
-              imageSrc={specialist.imageSrc}
-              avatarSrc={specialist.avatarSrc}
-              name={specialist.name}
-              role={specialist.role}
-              description={specialist.description}
-              price={specialist.price}
-            />
-          ))}
+          {loading ? (
+             <div className="col-span-full py-20 text-center text-gray-500">Loading services...</div>
+          ) : specialists.length === 0 ? (
+             <div className="col-span-full py-20 text-center text-gray-500">No services found.</div>
+          ) : (
+            specialists.map((specialist) => (
+              <SpecialistCard
+                key={specialist.id}
+                imageSrc={specialist.media?.[0]?.url} 
+                avatarSrc="" // No avatar in current schema
+                name={specialist.title} // Using Title as Name for now since schema lacks Person Name
+                role="Company Secretary"
+                description={specialist.description}
+                price={`RM ${Number(specialist.final_price).toLocaleString()}`}
+              />
+            ))
+          )}
         </div>
       </main>
     </div>

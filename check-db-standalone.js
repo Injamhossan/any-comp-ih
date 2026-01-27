@@ -1,4 +1,4 @@
-const { Client } = require('pg');
+ const { Client } = require('pg');
 
 const client = new Client({
   user: 'postgres',
@@ -13,10 +13,10 @@ console.log('Attempting to connect to database...');
 client.connect()
   .then(() => {
     console.log('Connected successfully!');
-    return client.query('SELECT NOW()');
+    return client.query('SELECT id, title FROM specialists LIMIT 5');
   })
   .then(res => {
-    console.log('Database time:', res.rows[0].now);
+    console.log('Specialists:', res.rows);
     return client.end();
   })
   .catch(err => {

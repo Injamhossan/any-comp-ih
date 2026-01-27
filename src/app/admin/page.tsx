@@ -1,108 +1,85 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { 
-  Search, 
-  Plus, 
-  Download, 
-  MoreVertical, 
-  Edit, 
-  Trash, 
-  ChevronLeft, 
-  ChevronRight,
-  Filter
+import {
+  Search,
+  Plus,
+  Download,
+  MoreVertical,
+  Edit,
+  Trash,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const SPECIALISTS = [
-  {
-    id: 1,
-    name: "Adam Low",
-    role: "Company Secretary",
-    price: "RM 1,600",
-    purchases: 20,
-    duration: "3 Days",
-    approvalStatus: "Approved",
-    publishStatus: "Published",
-    imageSrc: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 2,
-    name: "Jessica Law",
-    role: "Company Secretary",
-    price: "RM 1,600",
-    purchases: 0,
-    duration: "1 Day",
-    approvalStatus: "Under-Review",
-    publishStatus: "Published",
-    imageSrc: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 3,
-    name: "Stacey Lim",
-    role: "Company Secretary",
-    price: "RM 2,000",
-    purchases: 431,
-    duration: "14 Days",
-    approvalStatus: "Approved",
-    publishStatus: "Published",
-    imageSrc: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 4,
-    name: "Stacey Lim",
-    role: "Company Secretary",
-    price: "RM 2,000",
-    purchases: 0,
-    duration: "7 Days",
-    approvalStatus: "Under-Review",
-    publishStatus: "Published",
-    imageSrc: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 5,
-    name: "Sarah Wong",
-    role: "Company Secretary",
-    price: "RM 2,000",
-    purchases: 1283,
-    duration: "4 Days",
-    approvalStatus: "Rejected",
-    publishStatus: "Not Published",
-    imageSrc: "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?auto=format&fit=crop&q=80&w=100",
-  },
-  {
-    id: 6,
-    name: "Siddesh A/L",
-    role: "Company Secretary",
-    price: "RM 2,000",
-    purchases: 9180,
-    duration: "5 Days",
-    approvalStatus: "Rejected",
-    publishStatus: "Not Published",
-    imageSrc: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=100",
-  },
-   {
-    id: 7,
-    name: "Siti Hisham",
-    role: "Company Secretary",
-    price: "RM 1,600",
-    purchases: 24,
-    duration: "2 Days",
-    approvalStatus: "Approved",
-    publishStatus: "Published",
-    imageSrc: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=100",
-  },
-];
+// Interface based on what we send to backend
+interface Specialist {
+  id: string;
+  title: string;
+  description: string;
+  final_price: number;
+  duration_days: number;
+  is_draft: boolean;
+  created_at: string;
+  // properties not fully implemented yet but useful for UI
+  purchases?: number;
+  approval_status?: string;
+  media?: { url: string }[];
+}
 
 export default function AdminPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [openActionId, setOpenActionId] = useState<number | null>(null);
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
+  const [specialists, setSpecialists] = useState<Specialist[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [loading, setLoading] = useState(true);
 
   const tabs = ["All", "Drafts", "Published"];
 
-  const toggleActionMenu = (id: number) => {
+  useEffect(() => {
+    fetchSpecialists();
+  }, []);
+
+  const fetchSpecialists = async () => {
+    try {
+      const res = await fetch('/api/specialists');
+      const data = await res.json();
+      if (data.success) {
+        setSpecialists(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch specialists", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  const deleteSpecialist = async (id: string) => {
+      if (!confirm("Are you sure you want to delete this specialist?")) return;
+      
+      try {
+          const res = await fetch(`/api/specialists/${id}`, {
+              method: 'DELETE'
+          });
+          const data = await res.json();
+          if (data.success) {
+              setSpecialists(prev => prev.filter(s => s.id !== id));
+          } else {
+              alert("Failed to delete: " + data.message);
+          }
+      } catch (error) {
+          console.error("Delete failed", error);
+      }
+  };
+
+  const toggleActionMenu = (id: string) => {
     if (openActionId === id) {
       setOpenActionId(null);
     } else {
@@ -110,22 +87,15 @@ export default function AdminPage() {
     }
   };
 
-  const filteredSpecialists = SPECIALISTS.filter((specialist) => {
+  const filteredSpecialists = specialists.filter((specialist) => {
     // 1. Filter by Tab
-    if (activeTab === "Published" && specialist.publishStatus !== "Published") {
-      return false;
-    }
-    if (activeTab === "Drafts" && specialist.publishStatus === "Published") {
-      return false; // Assuming "Drafts" means anything not published
-    }
+    if (activeTab === "Published" && specialist.is_draft) return false;
+    if (activeTab === "Drafts" && !specialist.is_draft) return false;
 
     // 2. Filter by Search Query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return (
-        specialist.name.toLowerCase().includes(query) ||
-        specialist.role.toLowerCase().includes(query)
-      );
+      return specialist.title.toLowerCase().includes(query);
     }
 
     return true;
@@ -133,7 +103,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex-1 bg-white min-h-screen font-sans text-gray-900 px-6 py-8">
-      
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Specialists</h1>
@@ -151,8 +121,8 @@ export default function AdminPage() {
               onClick={() => setActiveTab(tab)}
               className={`
                 whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm
-                ${activeTab === tab 
-                  ? "border-blue-600 text-blue-600" 
+                ${activeTab === tab
+                  ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}
               `}
             >
@@ -173,7 +143,7 @@ export default function AdminPage() {
             className="w-full h-10 pl-3 pr-10 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
-        
+
         <div className="flex items-center gap-3 w-full sm:w-auto">
            <Link href="/admin/create-specialist">
              <button className="w-full flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#0e2a6d] text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-900">
@@ -189,7 +159,12 @@ export default function AdminPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[400px]">
+        {loading ? (
+           <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading specialists...</div>
+        ) : filteredSpecialists.length === 0 ? (
+           <div className="flex items-center justify-center h-full text-gray-500 text-sm py-10">No specialists found.</div>
+        ) : (
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-100">
@@ -213,53 +188,55 @@ export default function AdminPage() {
                 </td>
                 <td className="py-4 px-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full overflow-hidden relative">
-                         <Image 
-                            src={specialist.imageSrc} 
-                            alt={specialist.name}
-                            fill
-                            className="object-cover"
-                         />
+                    <div className="h-8 w-8 rounded-full overflow-hidden relative bg-gray-200">
+                         {specialist.media?.[0]?.url ? (
+                           <Image
+                              src={specialist.media[0].url}
+                              alt={specialist.title}
+                              fill
+                              className="object-cover"
+                           />
+                         ) : (
+                           <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-500">Img</div>
+                         )}
                     </div>
                     <div>
-                        <div className="text-sm font-medium text-gray-900">{specialist.name}</div>
-                        <div className="text-xs text-gray-500">{specialist.role}</div>
+                        <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]" title={specialist.title}>{specialist.title}</div>
+                        <div className="text-xs text-gray-500">Company Secretary</div>
                     </div>
                   </div>
                 </td>
                 <td className="py-4 px-3 text-sm font-semibold text-gray-700 whitespace-nowrap">
-                  {specialist.price}
+                  RM {specialist.final_price?.toLocaleString() ?? "0"}
                 </td>
                 <td className="py-4 px-3 text-sm text-gray-600 text-center">
-                  {specialist.purchases}
+                  {specialist.purchases ?? 0}
                 </td>
                 <td className="py-4 px-3 text-sm text-gray-600 text-center whitespace-nowrap">
-                  {specialist.duration}
+                  {specialist.duration_days} Days
                 </td>
                 <td className="py-4 px-3 text-center">
                   <span
                     className={`
                       inline-flex items-center rounded px-2 py-0.5 text-xs font-medium
-                      ${specialist.approvalStatus === "Approved" ? "bg-green-100 text-green-700" : ""}
-                      ${specialist.approvalStatus === "Under-Review" ? "bg-cyan-100 text-cyan-700" : ""}
-                      ${specialist.approvalStatus === "Rejected" ? "bg-red-100 text-red-700" : ""}
+                      ${specialist.approval_status === "Approved" ? "bg-green-100 text-green-700" : "bg-cyan-100 text-cyan-700"}
                     `}
                   >
-                    {specialist.approvalStatus}
+                    {specialist.approval_status ?? "Under-Review"}
                   </span>
                 </td>
                 <td className="py-4 px-3 text-center">
                   <span
                     className={`
                       inline-flex items-center rounded px-2 py-0.5 text-xs font-medium text-white
-                      ${specialist.publishStatus === "Published" ? "bg-green-500" : "bg-red-600"}
+                      ${!specialist.is_draft ? "bg-green-500" : "bg-gray-400"}
                     `}
                   >
-                     {specialist.publishStatus}
+                     {specialist.is_draft ? "Draft" : "Published"}
                   </span>
                 </td>
                 <td className="py-4 px-3 text-center relative">
-                  <button 
+                  <button
                     onClick={() => toggleActionMenu(specialist.id)}
                     className="p-1 hover:bg-gray-100 rounded-full"
                   >
@@ -269,12 +246,18 @@ export default function AdminPage() {
                   {/* Dropdown Menu */}
                   {openActionId === specialist.id && (
                     <div className="absolute right-8 top-1/2 -translate-y-1/2 w-40 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
-                      <button className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3">
+                      <button 
+                        onClick={() => router.push(`/admin/create-specialist?id=${specialist.id}`)}
+                        className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                      >
                         <Edit className="h-4 w-4 text-gray-500" />
                         Edit
                       </button>
                       <div className="border-t border-gray-100"></div>
-                      <button className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3">
+                      <button 
+                        onClick={() => deleteSpecialist(specialist.id)}
+                        className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                      >
                         <Trash className="h-4 w-4 text-gray-500" />
                         Delete
                       </button>
@@ -285,6 +268,7 @@ export default function AdminPage() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
 
       {/* Pagination */}
@@ -295,12 +279,7 @@ export default function AdminPage() {
          </button>
          <div className="flex items-center gap-1 mx-4">
              <button className="w-6 h-6 flex items-center justify-center text-gray-900 font-medium">1</button>
-             <button className="w-6 h-6 flex items-center justify-center bg-[#0e2a6d] text-white rounded-full text-xs">2</button>
-             <button className="w-6 h-6 flex items-center justify-center hover:text-gray-900">3</button>
-             <button className="w-6 h-6 flex items-center justify-center hover:text-gray-900">4</button>
-             <button className="w-6 h-6 flex items-center justify-center hover:text-gray-900">5</button>
-             <span className="text-gray-400">...</span>
-             <button className="w-6 h-6 flex items-center justify-center hover:text-gray-900">10</button>
+             {/* Pagination logic would go here */}
          </div>
          <button className="flex items-center hover:text-gray-900">
             Next
