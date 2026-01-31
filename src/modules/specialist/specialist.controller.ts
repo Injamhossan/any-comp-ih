@@ -30,6 +30,7 @@ export const show = async (req: NextRequest, { params }: { params: Promise<{ id:
     }
     return NextResponse.json({ success: true, data: specialist }, { status: 200 });
   } catch (error: any) {
+    console.error("Show Specialist Error:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 };

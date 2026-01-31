@@ -14,8 +14,9 @@ interface Specialist {
   final_price: number;
   duration_days: number;
   is_draft: boolean;
-  // properties for mapped UI
-  // properties for mapped UI
+  secretary_name?: string;
+  secretary_company?: string;
+  avatar_url?: string;
   media?: { url: string }[];
 }
 
@@ -92,10 +93,10 @@ export default function Page() {
               <SpecialistCard
                 key={specialist.id}
                 imageSrc={specialist.media?.[0]?.url} 
-                avatarSrc="" // No avatar in current schema
-                name={specialist.title} // Using Title as Name for now since schema lacks Person Name
+                avatarSrc={specialist.avatar_url || "/placeholder-avatar.png"}
+                name={specialist.secretary_name || "Company Secretary"}
                 role="Company Secretary"
-                description={specialist.description}
+                description={specialist.title} // Displaying the Title as the main description text on card
                 price={`RM ${Number(specialist.final_price).toLocaleString()}`}
               />
             ))

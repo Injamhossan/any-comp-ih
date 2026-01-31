@@ -18,7 +18,7 @@ export const getAllSpecialists = async (): Promise<Specialist[]> => {
 export const getSpecialistById = async (id: string): Promise<Specialist | null> => {
   return await prisma.specialist.findUnique({
     where: { id },
-    include: { media: true, service_offerings: true },
+    include: { media: true, service_offerings: true, additional_offerings: true },
   });
 };
 

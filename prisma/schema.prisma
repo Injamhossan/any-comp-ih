@@ -58,6 +58,13 @@ model Specialist {
   final_price             Decimal            @db.Decimal(10, 2)
   verification_status     VerificationStatus @default(PENDING)
   is_verified             Boolean            @default(false)
+  
+  // Secretary Profile
+  secretary_name          String?
+  secretary_company       String?
+  avatar_url              String?
+  certifications          String[]           @default([])
+
   duration_days           Int
   created_at              DateTime           @default(now())
   updated_at              DateTime           @updatedAt
@@ -65,8 +72,23 @@ model Specialist {
 
   media             Media[]
   service_offerings ServiceOffering[]
+  additional_offerings AdditionalOffering[]
 
   @@map("specialists")
+}
+
+model AdditionalOffering {
+  id            String     @id @default(uuid()) @db.Uuid
+  specialist_id String     @db.Uuid
+  title         String
+  price         Decimal    @db.Decimal(10, 2)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+
+  specialist    Specialist @relation(fields: [specialist_id], references: [id], onDelete: Cascade)
+
+  @@index([specialist_id])
+  @@map("additional_offerings")
 }
 
 model Media {

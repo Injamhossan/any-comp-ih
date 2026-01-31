@@ -2,9 +2,20 @@
 
 import React, { useState, Suspense } from "react";
 import Image from "next/image";
-import { Upload, ChevronRight } from "lucide-react";
+import { Upload, ChevronRight, X, Plus, Trash2, Check, User, Building, Zap, MapPin, CalendarCheck, Award, Truck, Headphones } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import uploadIcon from "@/app/assets/image/upload.png";
+import stcImage from "@/app/assets/image/STC.png";
+import maicsaImage from "@/app/assets/certification/Maicsa.png";
+import ssmImage from "@/app/assets/certification/SSM.png";
+import image6 from "@/app/assets/certification/image 6.png";
+
+const ASSETS = [
+  { name: "Default", src: stcImage },
+  { name: "Maicsa", src: maicsaImage },
+  { name: "SSM", src: ssmImage },
+  { name: "Image 6", src: image6 },
+];
 
 function CreateSpecialistContent() {
   interface UploadedImage {
@@ -14,20 +25,137 @@ function CreateSpecialistContent() {
     file_size: number;
   }
 
+  interface Offering {
+    title: string;
+    price: number | string;
+  }
+
   const router = useRouter();
-  // Safe to use useSearchParams here because this component is wrapped in Suspense
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
 
+  // Form State
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [basePrice, setBasePrice] = useState<number | string>("");
+  const [duration, setDuration] = useState<number | string>(1);
+  
+  // Secretary Profile State
+  const [secretaryName, setSecretaryName] = useState("");
+  const [secretaryCompany, setSecretaryCompany] = useState("");
+  const [avatar, setAvatar] = useState<UploadedImage | null>(null);
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+
+  // Additional Offerings State
+  const [offerings, setOfferings] = useState<Offering[]>([]);
+  const [newOffering, setNewOffering] = useState<Offering>({ title: "", price: "" }); 
+  
+  interface MasterOffering {
+    id: string;
+    title: string;
+    description: string;
+    s3_key: string | null;
+  }
+  const [masterOfferings, setMasterOfferings] = useState<MasterOffering[]>([]);
+  const [showOfferingDropdown, setShowOfferingDropdown] = useState(false);
+
   const processingFee = typeof basePrice === 'number' ? basePrice * 0.3 : 0;
   const total = typeof basePrice === 'number' ? basePrice + processingFee : 0;
+  
   const [images, setImages] = useState<(UploadedImage | null)[]>([null, null, null]); 
   const [uploading, setUploading] = useState<boolean[]>([false, false, false]);
   const [dragActive, setDragActive] = useState<number | null>(null);
 
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null); 
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const CERTIFICATION_OPTIONS = ["MAICSA", "SSM", "LS", "MIA"];
+
+  // Icon mapping helper
+  const getIcon = (key: string | null) => {
+      switch (key) {
+          case 'user-check': return <User className="h-5 w-5 text-gray-600" />;
+          case 'landmark': return <Building className="h-5 w-5 text-gray-600" />;
+          case 'files': return <div className="h-5 w-5 text-gray-600 font-bold border rounded flex items-center justify-center text-[10px]">DOC</div>; // Placeholder
+          case 'zap': return <Zap className="h-5 w-5 text-gray-600" />;
+          case 'map-pin': return <MapPin className="h-5 w-5 text-gray-600" />; 
+          case 'calendar-check': return <CalendarCheck className="h-5 w-5 text-gray-600" />;
+          case 'award': return <Award className="h-5 w-5 text-gray-600" />;
+          case 'truck': return <Truck className="h-5 w-5 text-gray-600" />;
+          case 'headphones': return <Headphones className="h-5 w-5 text-gray-600" />;
+          default: return <Check className="h-5 w-5 text-gray-600" />;
+      }
+  };
+
+  // Fetch Master Offerings
+  React.useEffect(() => {
+    fetch('/api/service-offerings')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                setMasterOfferings(data.data);
+            }
+        })
+        .catch(err => console.error("Failed to fetch master offerings", err));
+  }, []);
+
+  // Load data for edit
+  React.useEffect(() => {
+    if (editId) {
+        fetch(`/api/specialists/${editId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const s = data.data;
+                    setTitle(s.title || "");
+                    setDescription(s.description || "");
+                    setBasePrice(Number(s.base_price) || 0);
+                    setDuration(s.duration_days || 1);
+                    setSecretaryName(s.secretary_name || "");
+                    setSecretaryCompany(s.secretary_company || "");
+                    setCertifications(s.certifications || []);
+                    
+                    if (s.avatar_url) {
+                            setAvatar({ url: s.avatar_url, file_name: "avatar", mime_type: "image/jpeg", file_size: 0 });
+                    }
+                    
+                    // Map existing media
+                    if (s.media && s.media.length > 0) {
+                        const existingImages = [null, null, null] as (UploadedImage | null)[];
+                        s.media.forEach((m: any) => {
+                                if (m.display_order < 3) {
+                                    existingImages[m.display_order] = {
+                                        url: m.url,
+                                        file_name: m.file_name,
+                                        mime_type: m.mime_type || "image/jpeg",
+                                        file_size: m.file_size || 0
+                                    };
+                                }
+                        });
+                        setImages(existingImages);
+                    }
+                    if (s.additional_offerings && s.additional_offerings.length > 0) {
+                        setOfferings(s.additional_offerings.map((ao: any) => ({
+                                title: ao.title,
+                                price: ao.price
+                        })));
+                    }
+                } else {
+                    console.error("Framework Error:", data);
+                    alert("Failed to load specialist data. Please restart your server manually in the terminal (Ctrl+C then 'pnpm dev') if you recently updated the app.");
+                }
+            })
+            .catch(err => {
+                console.error("Failed to fetch specialist", err);
+                alert("Failed to fetch specialist. The server might be crashing. Please check your terminal.");
+            });
+    }
+  }, [editId]);
+
   const handleFile = async (index: number, file: File) => {
-      // Set uploading state for this index
       const newUploading = [...uploading];
       newUploading[index] = true;
       setUploading(newUploading);
@@ -52,14 +180,11 @@ function CreateSpecialistContent() {
             };
             setImages(newImages);
         } else {
-            console.error("Upload failed", data.error);
             alert(`Upload failed: ${data.error}`);
         }
       } catch (err: any) {
-          console.error("Upload failed", err);
           alert(`Upload failed: ${err.message}`);
       } finally {
-          // Clear uploading state
           setUploading(prev => {
               const u = [...prev];
               u[index] = false;
@@ -92,104 +217,125 @@ function CreateSpecialistContent() {
     }
   };
 
-  const commonUploadClasses = (index: number) => `
-    relative rounded-lg overflow-hidden border-2 border-dashed transition-colors flex flex-col items-center justify-center group cursor-pointer
-    ${dragActive === index ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50 hover:bg-white hover:border-blue-500"}
-  `;
+  const openAssetSelector = (index: number) => {
+      setActiveImageIndex(index);
+      setShowAssetModal(true);
+  };
+
+  const selectAsset = (asset: any) => {
+      if (activeImageIndex === null) return;
+
+      const assetData: UploadedImage = {
+        url: asset.src.src || asset.src, // Handle StaticImageData or string
+        file_name: asset.name,
+        mime_type: "image/png", // Assumption for assets
+        file_size: 0
+      };
+
+      if (activeImageIndex === 3) {
+          // Avatar
+          setAvatar(assetData);
+      } else {
+          // Main images
+          const newImages = [...images];
+          newImages[activeImageIndex] = assetData;
+          setImages(newImages);
+      }
+      setShowAssetModal(false);
+  };
+
+  const addOffering = () => {
+    if (newOffering.title && newOffering.price) {
+        setOfferings([...offerings, newOffering]);
+        setNewOffering({ title: "", price: "" });
+    }
+  };
   
-  const browseBtnClasses = "bg-[#0e2a6d] text-white px-6 py-2 rounded-full text-sm hover:bg-[rgba(0,47,112,1)] transition-colors";
+  const selectOfferingFromMaster = (masterItem: MasterOffering) => {
+      // Set the title, need price from user
+      setNewOffering({ title: masterItem.title, price: "" });
+      setShowOfferingDropdown(false);
+      // Automatically add if we don't need price, but we do need price.
+      // So checking logic
+  };
 
-  // Form State
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [showPublishModal, setShowPublishModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const removeOffering = (index: number) => {
+    const newOfferings = [...offerings];
+    newOfferings.splice(index, 1);
+    setOfferings(newOfferings);
+  };
 
-  // Load data for edit
-  React.useEffect(() => {
-    if (editId) {
-        fetch(`/api/specialists/${editId}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const s = data.data;
-                    setTitle(s.title);
-                    setDescription(s.description);
-                    setBasePrice(Number(s.base_price));
-                    
-                    // Map existing media
-                    if (s.media && s.media.length > 0) {
-                        const existingImages = [null, null, null] as (UploadedImage | null)[];
-                        s.media.forEach((m: any) => {
-                             if (m.display_order < 3) {
-                                 existingImages[m.display_order] = {
-                                     url: m.url,
-                                     file_name: m.file_name,
-                                     mime_type: m.mime_type || "image/jpeg",
-                                     file_size: m.file_size || 0
-                                 };
-                             }
-                        });
-                        setImages(existingImages);
-                    }
-                }
-            })
-            .catch(err => console.error("Failed to fetch specialist", err));
-    }
-  }, [editId]);
-
-  // Helper to construct payload
-  const getPayload = (isDraft: boolean) => {
-    // Map mime types to Prisma Enum
-    const getMimeTypeEnum = (mime: string) => {
-        if (mime === 'image/jpeg' || mime === 'image/jpg') return 'IMAGE_JPEG';
-        if (mime === 'image/png') return 'IMAGE_PNG';
-        if (mime === 'image/webp') return 'IMAGE_WEBP';
-        return 'IMAGE_JPEG'; // Default/Fallback
-    };
-
-    const mediaData = images
-        .filter((img): img is UploadedImage => img !== null)
-        .map((img, index) => ({
-            file_name: img.file_name,
-            file_size: img.file_size,
-            mime_type: getMimeTypeEnum(img.mime_type),
-            media_type: 'IMAGE',
-            url: img.url,
-            display_order: index
-        }));
-
-    const payload: any = {
-        title,
-        description,
-        base_price: typeof basePrice === 'number' ? basePrice : 0,
-        platform_fee: processingFee,
-        final_price: total,
-        is_draft: isDraft,
-        duration_days: 7, 
-        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now(),
-        // Simple media creation strategy
-         media: {
-            create: mediaData
-        }
-    };
-
-    if (editId) {
-        // If editing, we delete old media and create new ones for simplicity
-        payload.media = {
-             deleteMany: {},
-             create: mediaData
-        };
-    }
-
-    return payload;
+  const toggleCertification = (cert: string) => {
+      setCertifications(prev => 
+        prev.includes(cert) ? prev.filter(c => c !== cert) : [...prev, cert]
+      );
   };
 
   const submitToBackend = async (isDraft: boolean) => {
     setIsSubmitting(true);
     try {
-      const payload = getPayload(isDraft);
+        const getMimeTypeEnum = (mime: string) => {
+            if (mime === 'image/jpeg' || mime === 'image/jpg') return 'IMAGE_JPEG';
+            if (mime === 'image/png') return 'IMAGE_PNG';
+            if (mime === 'image/webp') return 'IMAGE_WEBP';
+            return 'IMAGE_JPEG'; 
+        };
+    
+        const mediaData = images
+            .filter((img): img is UploadedImage => img !== null)
+            .map((img, index) => ({
+                file_name: img.file_name,
+                file_size: img.file_size,
+                mime_type: getMimeTypeEnum(img.mime_type),
+                media_type: 'IMAGE',
+                url: img.url,
+                display_order: index
+            }));
+
+      // Ensure numbers are numbers and not NaN
+      const cleanBasePrice = typeof basePrice === 'number' && !isNaN(basePrice) ? basePrice : 0;
+      const cleanProcessingFee = typeof processingFee === 'number' && !isNaN(processingFee) ? processingFee : 0;
+      const cleanTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
+      const cleanDuration = Number(duration) || 1;
+
+      const additionalOfferingsPayload = offerings.map(o => ({ 
+          title: o.title || "Untitled Offering", 
+          price: Number(o.price) || 0 
+      }));
+
+      const payload: any = {
+        title: title || "Untitled Service",
+        description,
+        base_price: cleanBasePrice,
+        platform_fee: cleanProcessingFee,
+        final_price: cleanTotal,
+        is_draft: isDraft,
+        duration_days: cleanDuration,
+        slug: (title || "service").toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now(),
+        secretary_name: secretaryName,
+        secretary_company: secretaryCompany,
+        avatar_url: avatar?.url || "",
+        certifications: certifications, // Pass directly array
+      };
+
+      if (editId) {
+          // Update Logic
+          payload.media = {
+              deleteMany: {},
+              create: mediaData
+          };
+          payload.additional_offerings = {
+              deleteMany: {},
+              create: additionalOfferingsPayload
+          };
+      } else {
+          // Create Logic
+          payload.media = { create: mediaData };
+          payload.additional_offerings = { create: additionalOfferingsPayload };
+      }
       
+      console.log("Submitting Payload to Backend [EditMode=" + !!editId + "]:", JSON.stringify(payload, null, 2));
+
       const url = editId ? `/api/specialists/${editId}` : '/api/specialists';
       const method = editId ? 'PUT' : 'POST';
 
@@ -212,346 +358,438 @@ function CreateSpecialistContent() {
       alert(`Error saving specialist: ${error.message}`);
     } finally {
       setIsSubmitting(false);
-      setShowPublishModal(false);
     }
   };
 
+  const commonUploadClasses = (index: number) => `
+    relative rounded-lg overflow-hidden border-2 border-dashed transition-colors flex flex-col items-center justify-center group cursor-pointer bg-gray-50
+    ${dragActive === index ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-white hover:border-blue-500"}
+  `;
+
   return (
-    <div className="min-h-screen bg-gray-50/50 relative">
-      {/* Publish Confirmation Modal */}
-      {showPublishModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 animate-in fade-in zoom-in duration-200">
-             <div className="flex items-start gap-4 mb-6">
-                <div className="text-[#0e2a6d]">
-                   <svg className="w-8 h-8 fill-current" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                   </svg>
+    <div className="min-h-screen bg-[#F3F4F6] flex">
+      {/* ASSET SELECTION MODAL */}
+      {showAssetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-bold text-gray-900">Select Image</h3>
+                    <button onClick={() => setShowAssetModal(false)}><X className="h-5 w-5 text-gray-500 hover:text-gray-700"/></button>
                 </div>
-                <div>
-                   <h2 className="text-xl font-bold text-gray-900 mb-2">Publish changes</h2>
-                   <p className="text-gray-600 text-sm leading-relaxed">
-                      Do you want to publish these changes? It will appear in the marketplace listing
-                   </p>
+                <div className="p-4 grid grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto">
+                    {/* Option to Upload New */}
+                    <div 
+                        onClick={() => {
+                            if (activeImageIndex !== null) {
+                                if (activeImageIndex === 3) document.getElementById('avatar-upload')?.click();
+                                else document.getElementById(`file-upload-${activeImageIndex}`)?.click();
+                            }
+                            setShowAssetModal(false);
+                        }}
+                        className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-blue-500 transition-colors"
+                    >
+                        <Upload className="h-6 w-6 text-gray-400 mb-2"/>
+                        <span className="text-xs font-semibold text-gray-600">Upload New</span>
+                    </div>
+
+                    {/* Pre-defined Assets */}
+                    {ASSETS.map((asset, i) => (
+                        <div 
+                            key={i} 
+                            onClick={() => selectAsset(asset)}
+                            className="aspect-square rounded-lg border border-gray-200 relative overflow-hidden cursor-pointer hover:ring-2 ring-blue-500 transition-all group"
+                        >
+                             <Image src={asset.src} alt={asset.name} fill className="object-cover group-hover:scale-105 transition-transform"/>
+                             <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 text-[10px] text-center text-white truncate">{asset.name}</div>
+                        </div>
+                    ))}
                 </div>
-             </div>
-             
-             <div className="flex items-center justify-end gap-3">
-                 <button 
-                    onClick={() => setShowPublishModal(false)}
-                    className="px-6 py-2 rounded border border-gray-300 text-gray-700 font-medium text-sm hover:bg-gray-50"
-                 >
-                    Continue Editing
-                 </button>
-                 <button 
-                    onClick={() => submitToBackend(false)}
-                    disabled={isSubmitting || uploading.some(u => u)}
-                    className="px-6 py-2 rounded bg-[#0e2a6d] text-white font-medium text-sm hover:bg-[#002f70] disabled:opacity-50"
-                 >
-                    {isSubmitting ? "Saving..." : uploading.some(u => u) ? "Uploading images..." : "Save changes"}
-                 </button>
-             </div>
-          </div>
+            </div>
         </div>
       )}
 
-      <div className="container mx-auto px-6 py-8">
-        {/* Breadcrumb */}
-        <div className="mb-6 flex items-center text-xs text-gray-500 gap-1">
-            <span>Specialists</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-gray-900 font-medium">{editId ? 'Edit Specialist' : 'Create New'}</span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Content (Left Column) */}
-          <div className="lg:col-span-2 space-y-8">
+      {/* LEFT SIDE: PREVIEW */}
+      <div className="flex-1 p-8 overflow-y-auto">
+         <div className="max-w-4xl mx-auto space-y-12 pb-20">
             
-            {/* Title Section */}
+            {/* Title Preview */}
             <div>
-                 <input 
-                    type="text" 
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter Service Title (e.g. Register a new company | Private Limited - Sdn Bhd)"
-                    className="w-full text-2xl font-semibold text-gray-900 bg-transparent border-0 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:ring-0 px-0 placeholder:text-gray-300 transition-colors"
-                 />
+                <h1 className="text-3xl font-semibold text-gray-900 leading-tight">
+                    {title || "Register a new company | Private Limited - Sdn Bhd"}
+                </h1>
             </div>
 
-            {/* Image Upload Section */}
+            {/* Images Grid (Functional) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-96">
-                
                 {/* Main Large Upload Area (Index 0) */}
                 <div 
-                    onClick={() => document.getElementById('file-upload-0')?.click()}
+                    onClick={() => openAssetSelector(0)}
                     onDragEnter={(e) => handleDrag(e, 0)}
                     onDragLeave={(e) => handleDrag(e, 0)}
                     onDragOver={(e) => handleDrag(e, 0)}
                     onDrop={(e) => handleDrop(e, 0)}
-                    className={`md:col-span-1 p-8 h-full ${commonUploadClasses(0)}`}
+                    className={`md:col-span-1 h-full ${commonUploadClasses(0)}`}
                 >
-                     <input 
-                        type="file" 
-                        id="file-upload-0" 
-                        className="hidden" 
-                        accept="image/*"
-                        onChange={(e) => handleImageUpload(0, e)}
-                     />
-                     {uploading[0] && (
-                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80">
-                            <span className="text-sm text-blue-600 font-medium">Uploading...</span>
-                        </div>
-                     )}
+                     <input type="file" id="file-upload-0" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(0, e)} />
+                     {uploading[0] && <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80"><span className="text-sm text-blue-600 font-medium">Uploading...</span></div>}
                      
                      {images[0] ? (
                         <Image src={images[0].url} alt="Main Preview" fill className="object-cover" />
                      ) : (
-                        <>
-                            <div className="h-16 w-16 mb-4 relative opacity-50 group-hover:opacity-100 transition-opacity">
-                                <Image src={uploadIcon} alt="Upload" fill className="object-contain" />
+                        <div className="flex flex-col items-center gap-4 text-center p-6">
+                            <Upload className="h-10 w-10 text-gray-400" />
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium text-gray-600">Click to Select Image</p>
+                                <p className="text-xs text-gray-400">or drag and drop</p>
                             </div>
-                            <div className="flex flex-col items-center gap-2 mb-3 z-10">
-                                <span className={browseBtnClasses}>
-                                    Browse
-                                </span>
-                                <span className="text-gray-400 text-sm">or</span>
-                                <span className="text-gray-400 text-sm">Drag a file to upload</span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-2">
-                                PNG, JPG or JPEG up to 4MB
-                            </p>
-                        </>
+                        </div>
                      )}
                 </div>
 
                 {/* Right Side Stacked Images (Indices 1 & 2) */}
                 <div className="md:col-span-1 grid grid-rows-2 gap-4 h-full">
-                    
-                    {/* Top Image Slot (Index 1) */}
-                    <div 
-                        onClick={() => document.getElementById('file-upload-1')?.click()}
-                        onDragEnter={(e) => handleDrag(e, 1)}
-                        onDragLeave={(e) => handleDrag(e, 1)}
-                        onDragOver={(e) => handleDrag(e, 1)}
-                        onDrop={(e) => handleDrop(e, 1)}
-                        className={commonUploadClasses(1)}
-                    >
-                         <input 
-                            type="file" 
-                            id="file-upload-1" 
-                            className="hidden" 
-                            accept="image/*"
-                            onChange={(e) => handleImageUpload(1, e)}
-                         />
-                         
-                         {uploading[1] && (
-                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80">
-                                <span className="text-xs text-blue-600 font-medium">Uploading...</span>
-                            </div>
-                         )}
-
-                         {images[1] ? (
-                            <Image src={images[1].url} alt="Secondary Preview" fill className="object-cover" />
-                         ) : (
-                             <>
-                                <div className="h-8 w-8 mb-2 relative opacity-50 group-hover:opacity-100 transition-opacity">
-                                    <Image src={uploadIcon} alt="Upload" fill className="object-contain" />
+                    {[1, 2].map((idx) => (
+                        <div 
+                            key={idx}
+                            onClick={() => openAssetSelector(idx)}
+                            onDragEnter={(e) => handleDrag(e, idx)}
+                            onDragLeave={(e) => handleDrag(e, idx)}
+                            onDragOver={(e) => handleDrag(e, idx)}
+                            onDrop={(e) => handleDrop(e, idx)}
+                            className={commonUploadClasses(idx)}
+                        >
+                             <input type="file" id={`file-upload-${idx}`} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(idx, e)} />
+                             {uploading[idx] && <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80"><span className="text-xs text-blue-600 font-medium">Uploading...</span></div>}
+                             {images[idx] ? (
+                                <Image src={images[idx].url} alt="Preview" fill className="object-cover" />
+                             ) : (
+                                <div className="flex flex-col items-center gap-2">
+                                    <Upload className="h-6 w-6 text-gray-400" />
                                 </div>
-                                <div className="flex flex-col items-center gap-1 z-10">
-                                    <span className="bg-[#0e2a6d] text-white px-3 py-1 rounded-full text-[10px] hover:bg-[rgba(0,47,112,1)] transition-colors">
-                                        Browse
-                                    </span>
-                                    <span className="text-[10px] text-gray-400">or Drag a file</span>
-                                </div>
-                             </>
-                         )}
-                    </div>
-
-                    {/* Bottom Image Slot (Index 2) */}
-                     <div 
-                        onClick={() => document.getElementById('file-upload-2')?.click()}
-                        onDragEnter={(e) => handleDrag(e, 2)}
-                        onDragLeave={(e) => handleDrag(e, 2)}
-                        onDragOver={(e) => handleDrag(e, 2)}
-                        onDrop={(e) => handleDrop(e, 2)}
-                        className={commonUploadClasses(2)}
-                    >
-                         <input 
-                            type="file" 
-                            id="file-upload-2" 
-                            className="hidden" 
-                            accept="image/*"
-                            onChange={(e) => handleImageUpload(2, e)}
-                         />
-                         
-                         {uploading[2] && (
-                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80">
-                                <span className="text-xs text-blue-600 font-medium">Uploading...</span>
-                            </div>
-                         )}
-
-                         {images[2] ? (
-                            <Image src={images[2].url} alt="Tertiary Preview" fill className="object-cover" />
-                         ) : (
-                             <>
-                                <div className="h-8 w-8 mb-2 relative opacity-50 group-hover:opacity-100 transition-opacity">
-                                    <Image src={uploadIcon} alt="Upload" fill className="object-contain" />
-                                </div>
-                                <div className="flex flex-col items-center gap-1 z-10">
-                                    <span className="bg-[#0e2a6d] text-white px-3 py-1 rounded-full text-[10px] hover:bg-[rgba(0,47,112,1)] transition-colors">
-                                        Browse
-                                    </span>
-                                    <span className="text-[10px] text-gray-400">or Drag a file</span>
-                                </div>
-                             </>
-                         )}
-                    </div>
+                             )}
+                        </div>
+                    ))}
                 </div>
             </div>
 
-            {/* Description */}
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                <h3 className="font-semibold text-lg mb-4 text-gray-900">Description</h3>
-                <textarea 
+            {/* Description Preview */}
+            <div className="space-y-2">
+                <h3 className="text-lg font-bold text-gray-900">Description</h3>
+                <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+                    {description || "Describe your service here..."}
+                </div>
+            </div>
+
+            {/* Additional Offerings Preview */}
+            <div className="space-y-2">
+                <h3 className="text-lg font-bold text-gray-900">Additional Offerings</h3>
+                <p className="text-sm text-gray-500">Enhance your service by adding additional offerings</p>
+                <div className="grid grid-cols-2 gap-4">
+                     {/* Static examples or dynamic offerings would go here, currently using placeholder or basic list */}
+                     {offerings.length > 0 ? offerings.map((off, i) => (
+                         <div key={i} className="flex justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                             <span className="text-sm text-gray-700">{off.title}</span>
+                             <span className="text-sm font-medium">RM {off.price}</span>
+                         </div>
+                     )) : (
+                         <div className="text-gray-400 text-sm italic">No additional offerings added.</div>
+                     )}
+                </div>
+            </div>
+
+            {/* Company Secretary Profile Preview */}
+            <div className="space-y-4">
+                 <h3 className="text-lg font-bold text-gray-900">Company Secretary</h3>
+                 <div className="flex items-center gap-4">
+                     <div className="relative h-12 w-12 rounded-full overflow-hidden bg-gray-200">
+                         {avatar ? (
+                            <Image src={avatar.url} alt="Avatar" fill className="object-cover" />
+                         ) : (
+                            <div className="h-full w-full flex items-center justify-center text-gray-400"><User className="h-6 w-6"/></div>
+                         )}
+                     </div>
+                     <div>
+                         <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-gray-900 text-sm">{secretaryName || "Secretary Name"}</h4>
+                            <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-medium">Active</span>
+                         </div>
+                         <div className="text-xs text-gray-500">{secretaryCompany || "Company Name"}</div>
+                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                             <span>250 Clients</span>
+                             <span>•</span>
+                             <div className="flex items-center text-yellow-500">
+                                 <span>★</span> <span className="text-gray-600 ml-0.5">4.9</span>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-8 text-xs text-gray-500">
+                     <div className="space-y-4">
+                         <p>
+                             A company secretary service founded by John, who believes that every company deserves clarity, confidence, and care in their compliance journey.
+                         </p>
+                     </div>
+                     <div className="space-y-4">
+                         <div>
+                             <h5 className="font-bold text-gray-900 mb-1">Firm</h5>
+                             <div className="flex items-center gap-2">
+                                 <Building className="h-4 w-4 text-blue-800" />
+                                 <span>{secretaryCompany || "Corpsec Services Sdn Bhd"}</span>
+                             </div>
+                             <p className="pl-6 mt-1 text-[10px]">2 Years providing Company Secretarial services</p>
+                         </div>
+                         <div>
+                             <h5 className="font-bold text-gray-900 mb-1">Certifications</h5>
+                             <div className="flex gap-2 flex-wrap">
+                                 {certifications.length > 0 ? certifications.map(cert => (
+                                     <div key={cert} className={`px-2 py-1 text-[10px] font-semibold rounded border ${
+                                         cert === 'MAICSA' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                         cert === 'SSM' ? 'bg-green-100 text-green-800 border-green-200' :
+                                         'bg-gray-100 text-gray-800 border-gray-200'
+                                     }`}>
+                                         {cert}
+                                     </div>
+                                 )) : <span className="text-gray-400 italic">No certifications selected</span>}
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+
+         </div>
+      </div>
+
+      {/* RIGHT SIDE: EDIT PANEL */}
+      <div className="w-[400px] bg-white border-l border-gray-200 h-screen overflow-y-auto sticky top-0 flex flex-col shadow-xl">
+          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Edit Service</h2>
+              <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
+              </button>
+          </div>
+
+          <div className="p-6 space-y-6 flex-1">
+              {/* Title Input */}
+              <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700">Title</label>
+                  <input 
+                    type="text" 
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full text-sm text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0 transition-colors"
+                    placeholder="Enter service title"
+                  />
+              </div>
+
+               {/* Description Input */}
+              <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700">Description</label>
+                  <textarea 
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full text-sm text-gray-700 placeholder:text-gray-400 border-gray-200 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
-                    placeholder="Describe your service in detail..."
                     rows={6}
-                ></textarea>
-            </div>
+                    className="w-full text-sm text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0 transition-colors resize-none"
+                    placeholder="Describe your service..."
+                  />
+                  <div className="text-right text-[10px] text-gray-400">0/500 words</div>
+              </div>
 
-            {/* Additional Offerings */}
-             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                <h3 className="font-semibold text-lg mb-2 text-gray-900">Additional Offerings</h3>
-                <p className="text-xs text-gray-500 mb-4">Enhance your service by adding additional offerings (optional)</p>
-                <div className="flex gap-2">
-                    <input 
-                        type="text" 
-                        placeholder="Offering Title" 
-                        className="flex-1 text-sm border-gray-200 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                    <input 
+               {/* Duration Input */}
+              <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700">Estimated Completion Time (Days)</label>
+                  <select
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="w-full text-sm text-black bg-white border-gray-200 rounded-md focus:border-black focus:ring-0 transition-colors appearance-none cursor-pointer"
+                  >
+                      {[...Array(14)].map((_, i) => {
+                          const val = i + 1;
+                          return (
+                              <option key={val} value={val}>{val} day{val > 1 ? 's' : ''}</option>
+                          );
+                      })}
+                  </select>
+              </div>
+              
+              {/* Certification Selection */}
+              <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700">Certifications</label>
+                  <div className="grid grid-cols-2 gap-2">
+                      {CERTIFICATION_OPTIONS.map(cert => (
+                          <div 
+                              key={cert} 
+                              onClick={() => toggleCertification(cert)}
+                              className={`flex items-center gap-2 p-2 rounded-md border text-xs cursor-pointer select-none transition-colors ${
+                                  certifications.includes(cert) 
+                                    ? 'bg-blue-50 border-blue-500 text-blue-700' 
+                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                              }`}
+                          >
+                               <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                                   certifications.includes(cert) ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'
+                               }`}>
+                                   {certifications.includes(cert) && <Check className="h-3 w-3 text-white" />}
+                               </div>
+                               <span>{cert}</span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+               {/* Price Input */}
+              <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700">Price</label>
+                  <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 text-sm flex items-center gap-1">
+                             <img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Flag_of_Malaysia.svg" className="w-4 h-3 object-cover shadow-sm" alt="MY" />
+                             MYR
+                          </span>
+                      </div>
+                      <input 
                         type="number" 
-                        placeholder="Price (RM)" 
-                        className="w-32 text-sm border-gray-200 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                    <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-md text-sm hover:bg-gray-200 font-medium">Add</button>
-                </div>
-            </div>
+                        value={basePrice}
+                        onChange={(e) => setBasePrice(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                        className="w-full pl-16 text-sm text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0 transition-colors"
+                        placeholder="0.00"
+                      />
+                  </div>
+              </div>
 
-            {/* Company Secretary Profile (Now editable) */}
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                <h3 className="font-semibold text-lg mb-6 text-gray-900">Company Secretary Profile</h3>
-                
-                <div className="flex flex-col md:flex-row gap-8">
-                     {/* Left: Profile Info */}
-                    <div className="flex items-start gap-4">
-                        <div className="relative h-14 w-14 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-300">
-                             <Upload className="h-6 w-6" />
-                        </div>
-                        <div className="space-y-2">
-                             <input 
-                                type="text" 
-                                placeholder="Secretary Name" 
-                                className="block w-full text-sm font-bold text-gray-900 border-none p-0 focus:ring-0 placeholder:text-gray-300" 
-                             />
-                             <input 
-                                type="text" 
-                                placeholder="Company Name (e.g. Corsec Services)" 
-                                className="block w-full text-[10px] text-gray-500 border-none p-0 focus:ring-0 placeholder:text-gray-300" 
-                             />
-                        </div>
-                    </div>
-
-                    {/* Middle: Certifications */}
-                    <div className="flex-1">
-                        <h5 className="text-[10px] font-semibold text-gray-900 mb-2">Qualifications / Certifications</h5>
-                         <div className="flex flex-wrap gap-2">
-                               <input type="checkbox" id="c1" className="rounded text-blue-600 focus:ring-blue-500 border-gray-300" />
-                               <label htmlFor="c1" className="text-xs text-gray-600">MAICSA</label>
-
-                               <input type="checkbox" id="c2" className="rounded text-blue-600 focus:ring-blue-500 border-gray-300 ml-4" />
-                               <label htmlFor="c2" className="text-xs text-gray-600">SSM Practicing Cert</label>
-                         </div>
-                    </div>
-                </div>
-
-                <div className="mt-6">
-                    <textarea 
-                        className="w-full text-xs text-gray-600 border-gray-200 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                        rows={3}
-                        placeholder="Enter specific profile description or bio..."
-                    ></textarea>
-                </div>
-            </div>
-
-          </div>
-
-          {/* Right Sidebar (Sticky) */}
-          <div className="lg:col-span-1">
-              <div className="sticky top-8 space-y-6">
-                   {/* Action Buttons */}
-                   <div className="flex items-center gap-3 justify-end">
-                       <button 
-                          onClick={() => submitToBackend(true)}
-                          disabled={isSubmitting || uploading.some(u => u)}
-                          className="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
+               {/* Secretary Profile Inputs (Added for completeness within the panel) */}
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                   <h3 className="text-sm font-bold text-gray-900">Secretary Info</h3>
+                   <div className="flex gap-3">
+                       <div 
+                           onClick={() => openAssetSelector(3)}
+                           className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-500 overflow-hidden relative"
                        >
-                           {isSubmitting ? "Saving..." : "Save Draft"}
-                       </button>
-                        <button 
-                          onClick={() => setShowPublishModal(true)}
-                          disabled={isSubmitting || uploading.some(u => u)}
-                          className="bg-[#0e2a6d] text-white px-6 py-2 rounded text-xs font-medium hover:bg-blue-900 disabled:opacity-50"
-                        >
-                           Publish
-                       </button>
-                   </div>
-
-                   {/* Price Card */}
-                   <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8">
-                        <h3 className="text-xl font-bold text-gray-900">Professional Fee</h3>
-                        <p className="text-xs text-gray-500 mt-1 mb-8">Set a rate for your service</p>
-
-                        <div className="text-center mb-10">
-                            <div className="flex items-center justify-center gap-1 border-b-2 border-gray-900 pb-1 w-full">
-                                <span className="text-2xl font-bold text-gray-900">RM</span>
-                                <input 
-                                    type="number" 
-                                    placeholder="0.00"
-                                    value={basePrice}
-                                    onChange={(e) => setBasePrice(e.target.value === "" ? "" : parseFloat(e.target.value))}
-                                    className="text-4xl font-bold text-gray-900 border-none focus:ring-0 p-0 w-32 text-center placeholder:text-gray-200"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-4 text-xs">
-                             <div className="flex justify-between text-gray-600">
-                                 <span>Base price</span>
-                                 <span className="font-medium text-gray-900">RM {typeof basePrice === 'number' ? basePrice.toFixed(2) : '0.00'}</span>
-                             </div>
-                             <div className="flex justify-between text-gray-600 border-b border-gray-100 pb-4">
-                                 <span className="cursor-help">Service processing fee (30%)</span>
-                                 <span className="font-medium text-gray-900">RM {processingFee.toFixed(2)}</span>
-                             </div>
-                             <div className="flex justify-between text-gray-600 font-medium pt-1">
-                                 <span>Total Client Pays</span>
-                                 <span>RM {total.toFixed(2)}</span>
-                             </div>
-                             
-                             <div className="pt-6 mt-6 border-t border-gray-100 flex justify-between items-center">
-                                 <span className="font-semibold text-gray-900">Your returns</span>
-                                 <span className="font-bold text-lg text-gray-900">RM {typeof basePrice === 'number' ? basePrice.toFixed(2) : '0.00'}</span>
-                             </div>
-                        </div>
+                           {avatar ? <Image src={avatar.url} alt="av" fill className="object-cover"/> : <Upload className="h-4 w-4 text-gray-400"/>}
+                           <input type="file" id="avatar-upload" className="hidden" accept="image/*" 
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if(file) {
+                                        setIsAvatarUploading(true);
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+                                        try {
+                                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                setAvatar({ url: data.url, file_name: data.filename, mime_type: data.mimeType, file_size: data.size });
+                                            }
+                                        } finally { setIsAvatarUploading(false); }
+                                    }
+                                }}
+                           />
+                       </div>
+                       <div className="flex-1 space-y-2">
+                            <input 
+                                type="text" 
+                                value={secretaryName}
+                                onChange={(e) => setSecretaryName(e.target.value)}
+                                placeholder="Secretary Name"
+                                className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0"
+                            />
+                            <input 
+                                type="text" 
+                                value={secretaryCompany}
+                                onChange={(e) => setSecretaryCompany(e.target.value)}
+                                placeholder="Company Name"
+                                className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0"
+                            />
+                       </div>
                    </div>
               </div>
+
+             {/* Additional Offerings */}
+             <div className="space-y-3 pt-4 border-t border-gray-100 relative">
+                  <label className="text-xs font-semibold text-gray-700">Additional Offerings</label>
+                  
+                  <div className="relative">
+                      {/* Multi-Select Input Box */}
+                      <div 
+                          onClick={() => setShowOfferingDropdown(!showOfferingDropdown)} 
+                          className="w-full min-h-[42px] border border-gray-200 rounded-md px-2 py-1.5 cursor-pointer bg-white flex flex-wrap gap-2 items-center hover:border-gray-300 transition-colors"
+                      >
+                          {offerings.length > 0 ? (
+                              offerings.map((off, i) => (
+                                  <div key={i} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-[11px] font-medium text-gray-700 border border-gray-200">
+                                      <span>{off.title}</span>
+                                      <div 
+                                          onClick={(e) => {
+                                              e.stopPropagation();
+                                              setOfferings(prev => prev.filter((_, idx) => idx !== i));
+                                          }}
+                                          className="p-0.5 rounded-full hover:bg-gray-200 text-gray-500 hover:text-red-500 cursor-pointer"
+                                      >
+                                          <X className="h-3 w-3" />
+                                      </div>
+                                  </div>
+                              ))
+                          ) : (
+                              <span className="text-gray-400 text-xs px-1">Select offerings...</span>
+                          )}
+                          <div className="flex-1"></div>
+                          <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${showOfferingDropdown ? "rotate-90" : "rotate-00"}`} />
+                      </div>
+                      
+                      {/* Dropdown Menu */}
+                      {showOfferingDropdown && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto z-50">
+                              {masterOfferings.length > 0 ? (
+                                  masterOfferings.map((item) => {
+                                      const isSelected = offerings.some(o => o.title === item.title);
+                                      return (
+                                          <div 
+                                              key={item.id}
+                                              onClick={() => {
+                                                  if (isSelected) {
+                                                      setOfferings(prev => prev.filter(o => o.title !== item.title));
+                                                  } else {
+                                                      setOfferings(prev => [...prev, { title: item.title, price: 0 }]);
+                                                  }
+                                              }}
+                                              className={`flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`}
+                                          >
+                                              <div className={`mt-0.5 ${isSelected ? "text-blue-600" : "text-gray-400"}`}>
+                                                  {getIcon(item.s3_key)}
+                                              </div>
+                                              <div className="flex-1">
+                                                  <div className={`text-xs font-semibold ${isSelected ? "text-blue-900" : "text-gray-900"}`}>{item.title}</div>
+                                                  <div className="text-[10px] text-gray-500 line-clamp-1">{item.description}</div>
+                                              </div>
+                                              {isSelected && <Check className="h-4 w-4 text-blue-600" />}
+                                          </div>
+                                      );
+                                  })
+                              ) : (
+                                   <div className="p-3 text-xs text-gray-400 text-center">Loading offerings...</div>
+                              )}
+                          </div>
+                      )}
+                  </div>
+              </div>
+
           </div>
 
-        </div>
+          {/* Bottom Actions */}
+          <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4">
+              <button 
+                onClick={() => router.back()}
+                className="flex-1 px-4 py-2 bg-white border border-gray-200 text-red-500 text-sm font-medium rounded-md hover:bg-gray-50"
+              >
+                  Cancel
+              </button>
+              <button 
+                onClick={() => submitToBackend(false)}
+                disabled={isSubmitting || uploading.some(u => u)}
+                className="flex-1 px-4 py-2 bg-[#0e2a6d] text-white text-sm font-medium rounded-md hover:bg-[#002f70] disabled:opacity-50"
+              >
+                  {isSubmitting ? "Saving..." : "Confirm"}
+              </button>
+          </div>
       </div>
     </div>
   );
