@@ -14,7 +14,15 @@ export async function GET(req: NextRequest) {
     const db = prisma as any;
 
     const user = await db.user.findUnique({
-      where: { email }
+      where: { email },
+      include: {
+        registrations: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
+      }
     });
 
     if (!user) {

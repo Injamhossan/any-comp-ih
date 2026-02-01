@@ -62,8 +62,11 @@ model Specialist {
   // Secretary Profile
   secretary_name          String?
   secretary_company       String?
+  secretary_email         String?
   avatar_url              String?
   certifications          String[]           @default([])
+  additional_offerings    Json?
+
 
   duration_days           Int
   created_at              DateTime           @default(now())

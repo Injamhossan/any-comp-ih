@@ -19,7 +19,6 @@ import { useEffect, useState } from "react";
 
 const navigation = [
   { name: "Services", href: "/dashboard/services/create", icon: LayoutDashboard },
-  { name: "Specialists", href: "/dashboard/specialists", icon: User },
   { name: "My Companies", href: "/dashboard/companies", icon: Building2 },
   { name: "Register Company", href: "/register-your-company", icon: Building2 }, // Distinct Route
   { name: "Service Orders", href: "/dashboard/orders", icon: ClipboardList },

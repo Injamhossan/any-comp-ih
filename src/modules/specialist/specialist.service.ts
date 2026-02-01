@@ -18,9 +18,22 @@ export const getAllSpecialists = async (): Promise<Specialist[]> => {
 export const getSpecialistById = async (id: string): Promise<Specialist | null> => {
   return await prisma.specialist.findUnique({
     where: { id },
-    include: { media: true, service_offerings: true, additional_offerings: true },
+    include: { media: true, service_offerings: true },
   });
 };
+
+export const getSpecialistByEmail = async (email: string): Promise<Specialist | null> => {
+  // TODO: Uncomment after DB Migration
+  // return await prisma.specialist.findFirst({
+  //   where: { 
+  //     secretary_email: email,
+  //     deleted_at: null
+  //   },
+  //   include: { media: true },
+  // });
+  return null;
+};
+
 
 export const updateSpecialist = async (id: string, data: any): Promise<Specialist> => {
    return await prisma.specialist.update({

@@ -14,6 +14,20 @@ export const create = async (req: NextRequest) => {
 
 export const index = async (req: NextRequest) => {
   try {
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get('email');
+
+    if (email) {
+      // Find my specialist profile
+      const { getSpecialistByEmail } = await import("./specialist.service");
+      const specialist = await getSpecialistByEmail(email);
+      if (specialist) {
+         return NextResponse.json({ success: true, data: [specialist] }, { status: 200 }); // Return in array for consistency or object? keeping array for index
+      } else {
+         return NextResponse.json({ success: true, data: [] }, { status: 200 });
+      }
+    }
+
     const specialists = await getAllSpecialists();
     return NextResponse.json({ success: true, data: specialists }, { status: 200 });
   } catch (error: any) {
