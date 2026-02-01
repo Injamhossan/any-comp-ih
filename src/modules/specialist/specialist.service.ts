@@ -22,16 +22,19 @@ export const getSpecialistById = async (id: string): Promise<Specialist | null> 
   });
 };
 
-export const getSpecialistByEmail = async (email: string): Promise<Specialist | null> => {
-  // TODO: Uncomment after DB Migration
-  // return await prisma.specialist.findFirst({
-  //   where: { 
-  //     secretary_email: email,
-  //     deleted_at: null
-  //   },
-  //   include: { media: true },
-  // });
-  return null;
+export const getSpecialistByOwner = async (email: string, name?: string): Promise<Specialist | null> => {
+   // Fallback: Search by Name first since email migration might be blocked
+   if (name) {
+       const byName = await prisma.specialist.findFirst({
+           where: { secretary_name: name, deleted_at: null },
+           include: { media: true }
+       });
+       if (byName) return byName;
+   }
+
+   // Then try email (might fail if schema not updated, so wrapping in try/catch or just avoiding if possible)
+   // For now, we rely on name.
+   return null;
 };
 
 

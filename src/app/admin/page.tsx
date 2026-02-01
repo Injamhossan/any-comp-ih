@@ -10,7 +10,9 @@ import {
   Edit,
   Trash,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CheckCircle, 
+  XCircle 
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,9 +26,9 @@ interface Specialist {
   duration_days: number;
   is_draft: boolean;
   created_at: string;
-  // properties not fully implemented yet but useful for UI
+  verification_status?: string; // Added field
+  is_verified?: boolean;
   purchases?: number;
-  approval_status?: string;
   media?: { url: string }[];
 }
 
@@ -39,7 +41,7 @@ export default function AdminPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
 
-  const tabs = ["All", "Drafts", "Published"];
+  const tabs = ["All", "Drafts", "Published", "Pending Approval"]; // Added Pending Approval tab
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -66,13 +68,14 @@ export default function AdminPage() {
   const handleExport = () => {
     if (specialists.length === 0) return;
     
-    const headers = ["ID", "Title", "Price", "Duration", "Status", "Created At"];
+    const headers = ["ID", "Title", "Price", "Duration", "Status", "Approval", "Created At"];
     const rows = specialists.map(s => [
       s.id,
-      `"${s.title.replace(/"/g, '""')}"`, // Escape quotes
+      `"${s.title.replace(/"/g, '""')}"`,
       s.final_price,
       s.duration_days,
       s.is_draft ? "Draft" : "Published",
+      s.verification_status || "PENDING",
       new Date(s.created_at).toLocaleDateString()
     ]);
 
@@ -90,7 +93,7 @@ export default function AdminPage() {
   };
 
   const deleteSpecialist = async (id: string) => {
-      if (!confirm("Are you sure you want to delete this specialist?")) return;
+      if (!confirm("Are you sure you want to REJECT and DELETE this specialist? This cannot be undone.")) return;
       
       try {
           const res = await fetch(`/api/specialists/${id}`, {
@@ -99,11 +102,35 @@ export default function AdminPage() {
           const data = await res.json();
           if (data.success) {
               setSpecialists(prev => prev.filter(s => s.id !== id));
+               setOpenActionId(null);
           } else {
               alert("Failed to delete: " + data.message);
           }
       } catch (error) {
           console.error("Delete failed", error);
+      }
+  };
+
+  const approveSpecialist = async (id: string) => {
+      try {
+          const res = await fetch(`/api/specialists/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                  verification_status: "VERIFIED", 
+                  is_verified: true,
+                  is_draft: false // Publish immediately upon approval
+              })
+          });
+          const data = await res.json();
+          if (data.success) {
+              setSpecialists(prev => prev.map(s => s.id === id ? { ...s, verification_status: "VERIFIED", is_verified: true, is_draft: false } : s));
+              setOpenActionId(null);
+          } else {
+              alert("Failed to approve: " + data.message);
+          }
+      } catch (error) {
+          console.error("Approve failed", error);
       }
   };
 
@@ -133,8 +160,7 @@ export default function AdminPage() {
     setSelectedIds(newSelected);
   };
 
-  const getApprovalStatus = (s: any) => {
-    // Check verification_status from DB, default to PENDING
+  const getApprovalStatus = (s: Specialist) => {
     const status = s.verification_status || "PENDING";
     if (status === "VERIFIED") return { label: "Approved", color: "bg-green-100 text-green-700" };
     if (status === "REJECTED") return { label: "Rejected", color: "bg-red-100 text-red-700" };
@@ -321,20 +347,32 @@ export default function AdminPage() {
                   {/* Dropdown Menu */}
                   {openActionId === specialist.id && (
                     <div className="absolute right-8 top-1/2 -translate-y-1/2 w-40 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                      {(specialist.verification_status !== "VERIFIED") && (
+                         <button 
+                           onClick={() => approveSpecialist(specialist.id)}
+                           className="w-full px-4 py-3 text-left text-sm font-medium text-green-700 hover:bg-green-50 flex items-center gap-3"
+                         >
+                           <CheckCircle className="h-4 w-4 text-green-600" />
+                           Approve
+                         </button>
+                      )}
+                      
+                      <button 
+                        onClick={() => deleteSpecialist(specialist.id)}
+                        className="w-full px-4 py-3 text-left text-sm font-medium text-red-700 hover:bg-red-50 flex items-center gap-3"
+                      >
+                        <XCircle className="h-4 w-4 text-red-600" />
+                        Reject
+                      </button>
+
+                      <div className="border-t border-gray-100"></div>
+
                       <button 
                         onClick={() => router.push(`/admin/create-specialist?id=${specialist.id}`)}
                         className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                       >
                         <Edit className="h-4 w-4 text-gray-500" />
                         Edit
-                      </button>
-                      <div className="border-t border-gray-100"></div>
-                      <button 
-                        onClick={() => deleteSpecialist(specialist.id)}
-                        className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                      >
-                        <Trash className="h-4 w-4 text-gray-500" />
-                        Delete
                       </button>
                     </div>
                   )}

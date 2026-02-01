@@ -30,44 +30,49 @@ export default function CreateServicePage() {
   // Check if user already has a service created
   useEffect(() => {
     if (user?.email) {
-       // Fetch profile data
+       // 1. Fetch profile data first
        fetch(`/api/user/profile?email=${encodeURIComponent(user.email)}`)
         .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setProfileData(data.data);
-          }
+        .then(profileResult => {
+             let nameToCheck = user.displayName || "";
+             
+             if (profileResult.success && profileResult.data) {
+                 setProfileData(profileResult.data);
+                 // If profile has a name, prefer it as that's what we save
+                 if (profileResult.data.name) {
+                     nameToCheck = profileResult.data.name;
+                 }
+             }
+
+             // 2. Fetch existing service using the determined name
+             fetch(`/api/specialists?email=${encodeURIComponent(user.email || "")}&name=${encodeURIComponent(nameToCheck)}`)
+                 .then(res => res.json())
+                 .then(data => {
+                    if (data.success && data.data && data.data.length > 0) {
+                        const existing = data.data[0];
+                        setExistingServiceId(existing.id);
+                        setFormData({
+                            title: existing.title,
+                            description: existing.description.split("[Additional Offerings JSON]:")[0].trim(),
+                            basePrice: existing.base_price,
+                            duration: existing.duration_days,
+                            offerings: existing.additional_offerings || []
+                        });
+                        
+                        if (existing.description.includes("[Additional Offerings JSON]:")) {
+                            try {
+                                const jsonPart = existing.description.split("[Additional Offerings JSON]:")[1];
+                                const parsedOfferings = JSON.parse(jsonPart);
+                                setFormData(prev => ({...prev, offerings: parsedOfferings}));
+                            } catch (e) { console.error("Error parsing hidden offerings", e); }
+                        }
+
+                        if (existing.media && existing.media.length > 0) {
+                             setImages(existing.media.map((m: any) => m.url));
+                        }
+                    }
+                 });
         });
-
-       // Fetch existing service
-       fetch(`/api/specialists?email=${encodeURIComponent(user.email)}`)
-         .then(res => res.json())
-         .then(data => {
-            if (data.success && data.data && data.data.length > 0) {
-                const existing = data.data[0];
-                setExistingServiceId(existing.id);
-                setFormData({
-                    title: existing.title,
-                    description: existing.description.split("[Additional Offerings JSON]:")[0].trim(), // Remove appended JSON if present
-                    basePrice: existing.base_price,
-                    duration: existing.duration_days,
-                    offerings: existing.additional_offerings || [] // Use schema field if avail, else parse from desc? Parsing logic needed if we rely on appended JSON
-                });
-                
-                // If we are relying on appended JSON in description (Compatibility Mode)
-                if (existing.description.includes("[Additional Offerings JSON]:")) {
-                    try {
-                        const jsonPart = existing.description.split("[Additional Offerings JSON]:")[1];
-                        const parsedOfferings = JSON.parse(jsonPart);
-                        setFormData(prev => ({...prev, offerings: parsedOfferings}));
-                    } catch (e) { console.error("Error parsing hidden offerings", e); }
-                }
-
-                if (existing.media && existing.media.length > 0) {
-                     setImages(existing.media.map((m: any) => m.url));
-                }
-            }
-         });
     }
   }, [user]);
 
@@ -138,11 +143,6 @@ export default function CreateServicePage() {
             average_rating: 0,
             is_draft: false,
             
-            // Note: 'secretary_email' and 'additional_offerings' added to schema but strictly 
-            // excluded here until DB migration is confirmed to prevent crashes.
-            // If DB is updated, uncomment below:
-            // secretary_email: user?.email,
-            // additional_offerings: formData.offerings,
           };
 
           const url = existingServiceId ? `/api/specialists/${existingServiceId}` : '/api/specialists';
@@ -157,8 +157,6 @@ export default function CreateServicePage() {
           const data = await res.json();
           if (data.success) {
             alert(existingServiceId ? "Service updated successfully!" : "Service created successfully!");
-            // Stay on page or refresh to verify
-            // router.push('/dashboard/specialists'); // Don't redirect if we want them to "edit if they want"
           } else {
             console.error("Creation/Update failed:", data);
             alert("Failed to save service: " + (data.message || "Unknown error"));
@@ -189,7 +187,7 @@ export default function CreateServicePage() {
                 className="px-5 py-2 text-sm font-semibold text-white bg-[#0e3a8d] rounded-md hover:bg-[#002f70] transition-colors flex items-center gap-2 shadow-sm"
               >
                   {loading && <Loader2 className="h-4 w-4 animate-spin"/>}
-                  Publish
+                  {existingServiceId ? "Update Service" : "Publish"}
               </button>
           </div>
       </div>
@@ -396,7 +394,7 @@ export default function CreateServicePage() {
                           <span className="text-gray-900">Total</span>
                           <span className="text-gray-900">RM {total.toLocaleString()}</span>
                       </div>
-                      
+                              
                       <div className="h-[1px] bg-gray-200 my-4 w-full"></div>
 
                       <div className="flex justify-between items-center pt-1">

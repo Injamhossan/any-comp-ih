@@ -16,13 +16,14 @@ export const index = async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get('email');
+    const name = searchParams.get('name');
 
-    if (email) {
+    if (email || name) {
       // Find my specialist profile
-      const { getSpecialistByEmail } = await import("./specialist.service");
-      const specialist = await getSpecialistByEmail(email);
+      const { getSpecialistByOwner } = await import("./specialist.service");
+      const specialist = await getSpecialistByOwner(email || "", name || undefined);
       if (specialist) {
-         return NextResponse.json({ success: true, data: [specialist] }, { status: 200 }); // Return in array for consistency or object? keeping array for index
+         return NextResponse.json({ success: true, data: [specialist] }, { status: 200 }); 
       } else {
          return NextResponse.json({ success: true, data: [] }, { status: 200 });
       }

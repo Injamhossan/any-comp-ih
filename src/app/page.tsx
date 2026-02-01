@@ -14,6 +14,7 @@ interface Specialist {
   final_price: number;
   duration_days: number;
   is_draft: boolean;
+  verification_status?: string; // Added field
   secretary_name?: string;
   secretary_company?: string;
   avatar_url?: string;
@@ -30,8 +31,8 @@ export default function Page() {
         const res = await fetch('/api/specialists');
         const data = await res.json();
         if (data.success) {
-          // Filter out drafts for public view
-          const published = data.data.filter((s: Specialist) => !s.is_draft);
+          // Filter out drafts and unverified services for public view
+          const published = data.data.filter((s: Specialist) => !s.is_draft && s.verification_status === "VERIFIED");
           setSpecialists(published);
         }
       } catch (error) {
