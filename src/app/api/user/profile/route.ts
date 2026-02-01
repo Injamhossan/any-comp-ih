@@ -33,7 +33,7 @@ export async function PUT(req: NextRequest) {
         const body = await req.json();
         const { email, name, phone } = body; // Assume phone might be added later to schema
 
-        if (!email) return NextResponse.json({ success: false }, { status: 400 });
+        if (!email) return NextResponse.json({ success: false, message: "Email is required for update" }, { status: 400 });
 
         const db = prisma as any;
 
@@ -41,12 +41,18 @@ export async function PUT(req: NextRequest) {
             where: { email },
             data: {
                 name,
-                photo_url: body.photo_url || body.photoUrl // Accept both casing
+                phone: body.phone,
+                description: body.description,
+                company_name: body.company_name,
+                company_logo_url: body.company_logo_url,
+                certifications: body.certifications,
+                photo_url: body.photo_url || body.photoUrl 
             }
         });
 
         return NextResponse.json({ success: true, data: user });
     } catch(err: any) {
-        return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+        console.error("Profile Update Error:", err);
+        return NextResponse.json({ success: false, message: err.message || "Internal Server Error" }, { status: 500 });
     }
 }

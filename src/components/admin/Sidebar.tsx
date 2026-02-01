@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import STCLogo from "@/app/assets/image/STC.png";
-
+  
 const navigation = [
   { name: "Specialists", href: "/admin", icon: Tag },
   { name: "Clients", href: "/admin/clients", icon: Users },

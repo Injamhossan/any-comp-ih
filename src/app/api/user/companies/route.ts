@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
       const body = await req.json();
-      const { email, companyName, companyType } = body;
+      const { email, companyName, companyType, companyLogoUrl } = body;
 
       if (!email || !companyName) {
            return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
               userId: user.id,
               companyName,
               companyType,
+              companyLogoUrl, // Optional
               status: 'PENDING'
           }
       });

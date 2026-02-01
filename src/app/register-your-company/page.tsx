@@ -1,22 +1,26 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Loader2, ChevronLeft, CheckCircle } from "lucide-react";
+import { Loader2, ChevronLeft, CheckCircle, Upload, Camera } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function RegisterYourCompanyPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
       companyName: "",
       companyType: "Private Limited (Sdn. Bhd.)", 
-      email: ""
+      email: "",
+      companyLogoUrl: ""
   });
   const [error, setError] = useState("");
 
@@ -44,6 +48,34 @@ export default function RegisterYourCompanyPage() {
       }
   }, [user, router]);
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setUploading(true);
+      const data = new FormData();
+      data.append("file", file);
+
+      try {
+          const res = await fetch("/api/upload", {
+              method: "POST",
+              body: data
+          });
+          const result = await res.json();
+          
+          if (result.success) {
+              setFormData(prev => ({ ...prev, companyLogoUrl: result.url }));
+          } else {
+              setError("Logo upload failed: " + (result.error || "Unknown error"));
+          }
+      } catch (err) {
+          console.error(err);
+          setError("Error uploading logo");
+      } finally {
+          setUploading(false);
+      }
+  };
+
   const handleSubmit = async () => {
       setSubmitting(true);
       setError("");
@@ -52,7 +84,8 @@ export default function RegisterYourCompanyPage() {
           const payload = {
               email: user?.email,
               companyName: formData.companyName,
-              companyType: formData.companyType
+              companyType: formData.companyType,
+              companyLogoUrl: formData.companyLogoUrl
           };
 
           const res = await fetch('/api/user/companies', {
@@ -125,7 +158,43 @@ export default function RegisterYourCompanyPage() {
                              <p className="text-gray-500 text-sm mt-1">Enter your proposed company name and structure.</p>
                          </div>
 
-                         <div className="space-y-4">
+                         <div className="space-y-6">
+                             {/* Logo Upload Section */}
+                             <div>
+                                 <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo (Optional)</label>
+                                 <div className="flex items-center gap-4">
+                                     <div className="h-20 w-20 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center relative overflow-hidden group">
+                                         {formData.companyLogoUrl ? (
+                                             <Image src={formData.companyLogoUrl} alt="Preview" fill className="object-contain p-2" />
+                                         ) : (
+                                             <Upload className="h-6 w-6 text-gray-400" />
+                                         )}
+                                          {uploading && (
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                <Loader2 className="h-5 w-5 text-white animate-spin" />
+                                            </div>
+                                        )}
+                                     </div>
+                                     <div>
+                                         <button 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploading}
+                                            className="text-sm text-blue-600 font-medium hover:text-blue-700 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-md transition-colors"
+                                         >
+                                             {uploading ? "Uploading..." : "Upload Logo"}
+                                         </button>
+                                         <p className="text-xs text-gray-400 mt-1">Recommended size: 400x400px</p>
+                                     </div>
+                                     <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleLogoUpload} 
+                                        className="hidden" 
+                                        accept="image/*"
+                                     />
+                                 </div>
+                             </div>
+
                              <div>
                                  <label className="block text-sm font-medium text-gray-700 mb-1">Proposed Company Name</label>
                                  <input 
@@ -177,6 +246,17 @@ export default function RegisterYourCompanyPage() {
                          </div>
 
                          <div className="bg-gray-50 rounded-lg p-6 space-y-4 border border-gray-100">
+                             <div className="flex items-center gap-4 border-b border-gray-200 pb-4 mb-4">
+                                 <div className="h-16 w-16 bg-white rounded-lg border border-gray-200 flex items-center justify-center relative overflow-hidden">
+                                    {formData.companyLogoUrl ? (
+                                        <Image src={formData.companyLogoUrl} alt="Logo" fill className="object-contain p-1" />
+                                    ) : (
+                                        <span className="text-xs text-gray-400">No Logo</span>
+                                    )}
+                                 </div>
+                                 <div className="font-semibold text-gray-900">{formData.companyName}</div>
+                             </div>
+
                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                  <div className="text-sm text-gray-500">Company Name</div>
                                  <div className="sm:col-span-2 text-sm font-semibold text-gray-900">{formData.companyName}</div>

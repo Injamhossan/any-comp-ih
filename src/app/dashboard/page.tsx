@@ -26,7 +26,7 @@ export default function DashboardPage() {
            </div>
            <h3 className="text-lg font-semibold text-gray-900">Register New Company</h3>
            <p className="text-sm text-gray-500 mt-2 mb-4">Start a new company registration application today.</p>
-           <Link href="/register-company" className="text-blue-600 text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all">
+           <Link href="/register-your-company" className="text-blue-600 text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all">
               Get Started <ArrowRight className="h-4 w-4" />
            </Link>
         </div>
