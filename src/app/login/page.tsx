@@ -22,8 +22,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/"); // Redirect to home on success
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Check for Admin
+      if (userCredential.user.email?.toLowerCase() === "admin@anycomp.com") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard/services/create");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to login");
     } finally {
@@ -124,7 +129,7 @@ export default function LoginPage() {
             href="/register"
             className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500"
           >
-            Start a 14 day free trial
+           Sign Up
           </Link>
         </p>
       </div>

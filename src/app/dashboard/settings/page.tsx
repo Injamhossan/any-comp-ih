@@ -346,6 +346,24 @@ export default function SettingsPage() {
               </div>
           </div>
       </div>
+
+      <div className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-red-50 bg-red-50/30">
+              <h3 className="text-lg font-semibold text-red-700">Account Actions</h3>
+          </div>
+          <div className="p-6">
+              <button 
+                onClick={() => {
+                    import("firebase/auth").then(({ signOut }) => {
+                        signOut(auth).then(() => router.push("/login"));
+                    });
+                }}
+                className="bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-200 px-6 py-2 rounded-md text-sm font-medium transition-colors"
+               >
+                  Sign Out
+              </button>
+          </div>
+      </div>
     </div>
   );
 }

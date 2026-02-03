@@ -99,8 +99,12 @@ export default function ClientsPage() {
                 <tr key={client.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center">
-                        <Building2 className="h-5 w-5 text-indigo-600" />
+                      <div className="flex-shrink-0 h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center overflow-hidden relative">
+                        {client.companyLogoUrl ? (
+                           <Image src={client.companyLogoUrl} alt={client.companyName} fill className="object-cover" />
+                        ) : (
+                           <Building2 className="h-5 w-5 text-indigo-600" />
+                        )}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{client.companyName}</div>

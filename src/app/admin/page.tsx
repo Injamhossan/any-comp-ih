@@ -171,6 +171,11 @@ export default function AdminPage() {
     // 1. Filter by Tab
     if (activeTab === "Published" && specialist.is_draft) return false;
     if (activeTab === "Drafts" && !specialist.is_draft) return false;
+    if (activeTab === "Pending Approval") {
+       if (specialist.is_draft) return false;
+       const status = specialist.verification_status || "PENDING";
+       if (status === "VERIFIED" || status === "REJECTED") return false;
+    }
 
     // 2. Filter by Search Query
     if (searchQuery) {

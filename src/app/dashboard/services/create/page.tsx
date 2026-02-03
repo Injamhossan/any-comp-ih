@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Upload, Plus, Loader2, ArrowRight, CheckCircle, Star, X, Trash2, UserPlus, Landmark, FileText, Zap, MapPin, Calendar, Award, Truck, Headphones, ChevronDown, Check } from "lucide-react";
+import { Upload, Plus, Loader2, ArrowRight, CheckCircle, Star, X, Trash2, UserPlus, Landmark, FileText, Zap, MapPin, Calendar, Award, Truck, Headphones, ChevronDown, Check, Cloud, ArrowUp } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -13,17 +13,21 @@ export default function CreateServicePage() {
   
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
+  /* State for custom duration dropdown */
+  const [isDurationDropdownOpen, setIsDurationDropdownOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isOfferingDropdownOpen, setIsOfferingDropdownOpen] = useState(false);
   const [formData, setFormData] = useState({
       title: "Register a new company | Private Limited - Sdn Bhd",
       description: "",
-      basePrice: 1800,
+      basePrice: 0,
       duration: 1,
       offerings: [] as {title: string, price: number}[]
   });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const [existingServiceId, setExistingServiceId] = useState<string | null>(null);
 
@@ -70,18 +74,56 @@ export default function CreateServicePage() {
                         if (existing.media && existing.media.length > 0) {
                              setImages(existing.media.map((m: any) => m.url));
                         }
+                    } else {
+                        // NEW SERVICE - Dynamic Title based on Company Name AND Type
+                        const reg = profileResult.data.registrations?.[0];
+                        if (reg) {
+                            let parts = [];
+                            
+                            // 1. Company Name
+                            if (reg.companyName) {
+                                parts.push(reg.companyName);
+                            }
+
+                            // 2. Company Type Description
+                            if (reg.companyType) {
+                                if (reg.companyType === "Sdn Bhd") parts.push("Private Limited - Sdn Bhd");
+                                else if (reg.companyType === "Berhad") parts.push("Public Limited - Berhad");
+                                else parts.push(reg.companyType);
+                            }
+
+                            if (parts.length > 0) {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    title: parts.join(" | ")
+                                }));
+                            }
+                        }
                     }
-                 });
-        });
+                 })
+                 .finally(() => setProfileLoading(false));
+        })
+        .catch(() => setProfileLoading(false));
+    } else {
+        const timer = setTimeout(() => {
+            if (!user) setProfileLoading(false); 
+        }, 2000);
+        return () => clearTimeout(timer);
     }
   }, [user]);
 
-  const processingFee = formData.basePrice * 0.3; 
-  const total = formData.basePrice + processingFee;
+  const base = Number(formData.basePrice) || 0;
+  const processingFee = base * 0.3; 
+  const total = base + processingFee;
 
   const registeredCompany = profileData?.registrations?.[0];
   const displayCompanyName = registeredCompany?.companyName || profileData?.company_name || "Company Name";
   const displayCompanyLogo = registeredCompany?.companyLogoUrl || profileData?.company_logo_url;
+
+  /* State for active upload slot */
+  const [activeUploadIndex, setActiveUploadIndex] = useState<number | null>(null);
+
+  // ... (existing code) ...
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
@@ -99,7 +141,19 @@ export default function CreateServicePage() {
           });
           const result = await res.json();
           if (result.success) {
-               setImages(prev => [...prev, result.url]);
+               if (activeUploadIndex !== null) {
+                   setImages(prev => {
+                       const newImages = [...prev];
+                       // Fill empty slots if needed
+                       while(newImages.length <= activeUploadIndex) newImages.push(""); 
+                       newImages[activeUploadIndex] = result.url;
+                       return newImages;
+                   });
+                   setActiveUploadIndex(null);
+               } else {
+                   // Fallback append
+                   setImages(prev => [...prev, result.url]);
+               }
           } else {
                alert("Image upload failed");
           }
@@ -107,19 +161,88 @@ export default function CreateServicePage() {
           console.error(err);
       } finally {
           setUploading(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
       }
   };
 
-  const handleSubmit = async () => {
+  // Helper render function for upload box
+  const renderUploadBox = (index: number, isLarge: boolean = false) => {
+      const hasImage = images[index];
+      return (
+          <div 
+            key={index}
+            className={`relative rounded-xl border-dashed border-2 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden bg-white group
+                ${isLarge ? 'h-[400px] border-black' : 'h-[190px] border-gray-300'}
+                ${hasImage ? 'border-solid border-gray-200 p-0' : 'hover:bg-gray-50'}
+            `}
+            onClick={() => {
+                if (!hasImage) {
+                    setActiveUploadIndex(index);
+                    fileInputRef.current?.click();
+                }
+            }}
+          >
+              {hasImage ? (
+                  <>
+                      <Image src={hasImage} alt={`Upload ${index+1}`} fill className="object-cover" />
+                      <button 
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              const newImages = [...images];
+                              newImages.splice(index, 1);
+                              setImages(newImages);
+                          }}
+                          className="absolute top-2 right-2 p-1.5 bg-white/80 hover:bg-red-50 text-gray-700 hover:text-red-500 rounded-lg backdrop-blur-sm transition-colors z-10"
+                      >
+                          <Trash2 className="h-5 w-5" />
+                      </button>
+                  </>
+              ) : (
+                  <div className={`flex flex-col items-center text-center p-4 ${isLarge ? '' : 'scale-90'}`}>
+                      <div className={`mb-3 relative ${isLarge ? 'mb-4' : 'mb-2'}`}>
+                          <Cloud className={`${isLarge ? 'h-20 w-20' : 'h-14 w-14'} text-blue-900`} strokeWidth={1.5} />
+                          <ArrowUp className={`${isLarge ? 'h-8 w-8' : 'h-5 w-5'} text-blue-900 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`} strokeWidth={3} />
+                      </div>
+                      <span className={`bg-[#0e2a6d] text-white rounded-full font-bold transition-colors group-hover:bg-[#001f5c] ${isLarge ? 'px-10 py-2.5 text-sm mb-3' : 'px-6 py-1.5 text-xs mb-2'}`}>
+                          Browse
+                      </span>
+                      <span className="text-gray-400 text-xs">or, Drag a file</span>
+                  </div>
+              )}
+          </div>
+      );
+  };
+
+  const isApproved = registeredCompany && registeredCompany.status === 'APPROVED';
+  
+  const isNotEligible = !isApproved;
+
+  const handleSubmit = () => {
+      if (profileLoading) return;
+      
+      if (!registeredCompany) {
+           alert("You must register a company first before you can post services.");
+           router.push("/register-company"); 
+           return;
+      }
+
+      if (registeredCompany.status !== 'APPROVED') {
+           alert("Your company registration is pending approval. You cannot post services until it is approved.");
+           return; 
+      }
+      setIsConfirmOpen(true);
+  };
+
+  const handleSubmitConfirmed = async () => {
       setLoading(true);
       try {
-          // Generate a slug from title
+         
           const slug = formData.title
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '') + '-' + Date.now();
 
-          // Prepare description with additional offerings if needed (temporary storage until schema update applied)
+          
           let finalDescription = formData.description || profileData?.description || "";
           if (formData.offerings.length > 0) {
              finalDescription += "\n\n[Additional Offerings JSON]: " + JSON.stringify(formData.offerings);
@@ -134,9 +257,8 @@ export default function CreateServicePage() {
             final_price: total,
             platform_fee: processingFee,
             secretary_name: profileData?.name || user?.displayName || "Unknown Specialist",
-            secretary_company: displayCompanyName, // Mapped from secretary_company_name
+            secretary_company: displayCompanyName,  
             avatar_url: profileData?.photo_url || user?.photoURL,
-            // optional fields
             verification_status: "PENDING",
             is_verified: false,
             total_number_of_ratings: 0,
@@ -173,22 +295,45 @@ export default function CreateServicePage() {
     <div className="max-w-[1400px] mx-auto pb-20 px-4 sm:px-6 lg:px-8 bg-white min-h-screen font-sans">
       
       {/* Header Actions */}
-      <div className="flex items-center justify-between py-6 sticky top-0 bg-white z-20 border-b border-gray-50 mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 truncate max-w-2xl">{formData.title}</h1>
-          <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setIsEditDrawerOpen(true)}
-                className="px-5 py-2 text-sm font-semibold text-white bg-[#0f172a] rounded-md hover:bg-gray-800 transition-colors">
-                  Edit
-              </button>
-              <button 
-                onClick={handleSubmit}
-                disabled={loading}
-                className="px-5 py-2 text-sm font-semibold text-white bg-[#0e3a8d] rounded-md hover:bg-[#002f70] transition-colors flex items-center gap-2 shadow-sm"
-              >
-                  {loading && <Loader2 className="h-4 w-4 animate-spin"/>}
-                  {existingServiceId ? "Update Service" : "Publish"}
-              </button>
+      <div className="flex flex-col py-6 sticky top-0 bg-white z-20 border-b border-gray-50 mb-8 gap-4">
+          {!profileLoading && isNotEligible && (
+             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 w-full">
+                <div className="flex">
+                   <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                   </div>
+                   <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                         {registeredCompany ? (
+                             <>Your company registration is currently <strong>{registeredCompany.status}</strong>. You cannot publish or update services until your company is approved by an administrator.</>
+                         ) : (
+                             <>You do not have a registered company under this account. Please <a href="/register-your-company" className="font-bold underline">register your company</a> to publish services.</>
+                         )}
+                      </p>
+                   </div>
+                </div>
+             </div>
+          )}
+          
+          <div className="flex items-center justify-between w-full">
+            <h1 className="text-2xl font-bold text-gray-900 truncate max-w-2xl">{formData.title}</h1>
+            <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setIsEditDrawerOpen(true)}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-[#0f172a] rounded-md hover:bg-gray-800 transition-colors">
+                    Edit
+                </button>
+                <button 
+                  onClick={handleSubmit}
+                  disabled={loading || isNotEligible || profileLoading}
+                  className={`px-5 py-2 text-sm font-semibold text-white rounded-md flex items-center gap-2 shadow-sm transition-colors ${loading || isNotEligible || profileLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0e3a8d] hover:bg-[#002f70]'}`}
+                >
+                    {loading && <Loader2 className="h-4 w-4 animate-spin"/>}
+                    {existingServiceId ? "Update Service" : "Publish"}
+                </button>
+            </div>
           </div>
       </div>
 
@@ -197,63 +342,25 @@ export default function CreateServicePage() {
           {/* Main Content (Left Col) */}
           <div className="lg:col-span-8 space-y-10">
               
-              {/* Image Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
-                  {/* Main Large Image */}
-                  <div className="relative bg-gray-50 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-all group overflow-hidden border-2 border-dashed border-gray-200"
-                       onClick={() => fileInputRef.current?.click()}>
-                      {images[0] ? (
-                          <Image src={images[0]} alt="Main Service Image" fill className="object-cover" />
-                      ) : (
-                        <div className="p-8 text-center">
-                          <div className="h-12 w-12 border-2 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4">
-                             <Upload className="h-6 w-6 text-gray-400" />
-                          </div>
-                          <p className="text-xs text-gray-400 font-medium max-w-[200px] mx-auto leading-relaxed">
-                            Upload an image for your service listing in PNG, JPG or JPEG up to 4MB
-                          </p>
-                          {uploading && <Loader2 className="h-5 w-5 animate-spin mx-auto mt-2 text-gray-400"/>}
-                        </div>
-                      )}
-                      <input type="file" ref={fileInputRef} className="hidden" onChange={handleImageUpload} accept="image/*" />
+              {/* Image Uploader Grid */}
+              <div className="w-full space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
+                      {/* Left: One Large Box (Index 0) */}
+                      {renderUploadBox(0, true)}
+
+                      {/* Right: Two Smaller Boxes Stacked (Index 1, 2) */}
+                      <div className="flex flex-col gap-4 h-full">
+                          {renderUploadBox(1)}
+                          {renderUploadBox(2)}
+                      </div>
+                  </div>
+
+                  <div className="flex justify-between text-[11px] text-gray-500 font-medium px-1">
+                      <span>Accepted formats: JPG, JPEG, PNG or WEBP</span>
+                      <span>Maximim file size: 4MB</span>
                   </div>
                   
-                  {/* Secondary Column */}
-                  <div className="grid grid-rows-2 gap-4">
-                      {/* Top Right Image */}
-                      <div className="relative bg-gray-100 rounded-lg overflow-hidden group">
-                           {images[1] ? (
-                               <Image src={images[1]} alt="Sub 1" fill className="object-cover" />
-                           ) : (
-                               <div className="absolute inset-0 bg-[#eef1f6] flex flex-col items-center justify-center text-center p-6 relative">
-                                    <div className="absolute top-4 right-4 bg-white/80 p-1 rounded">
-                                        <div className="h-6 w-8 bg-blue-900/10"></div>
-                                    </div>
-                                    <h4 className="font-bold text-gray-800 text-lg leading-tight mb-2 drop-shadow-sm">10 Best Company Secretarial in Johor Bahru</h4>
-                               </div>
-                           )}
-                           <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 z-10 opacity-0 cursor-pointer w-full h-full"></button>
-                      </div>
-                      
-                      {/* Bottom Right Image/Card */}
-                      <div className="relative bg-[#f1f3f6] rounded-lg overflow-hidden flex items-end">
-                           {images[2] ? (
-                                <Image src={images[2]} alt="Sub 2" fill className="object-cover" />
-                           ) : (
-                               <div className="w-full h-full p-6 flex flex-col justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                                   <div className="w-1/2 h-full absolute right-0 bottom-0">
-                                       {/* Placeholder for person image cutout */}
-                                       <div className="h-full w-full bg-gray-200 rounded-tl-[100px] opacity-20"></div>
-                                   </div>
-                                   <div className="relative z-10 max-w-[70%]">
-                                        <h4 className="font-bold text-lg text-gray-800 leading-snug mb-2">A Company Secretary Represents a Key Role in Any Business. This is Why</h4>
-                                        <div className="h-1 w-12 bg-red-500 rounded-full"></div>
-                                   </div>
-                               </div>
-                           )}
-                           <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 z-10 opacity-0 cursor-pointer w-full h-full"></button>
-                      </div>
-                  </div>
+                  <input type="file" ref={fileInputRef} className="hidden" onChange={handleImageUpload} accept="image/*" />
               </div>
 
               {/* Description */}
@@ -453,17 +560,52 @@ export default function CreateServicePage() {
                         {formData.description.length} characters
                       </div>
                    </div>
-
+        
                    {/* Duration Input */}
-                   <div className="space-y-2">
-                       <label className="text-sm font-bold text-gray-700">Estimated Completion Time (Days)</label>
-                       <input 
-                         type="number"
-                         min="1"
-                         value={formData.duration}
-                         onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value) || 1})}
-                         className="w-full p-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                       />
+                   <div className="space-y-4">
+                       <h3 className="text-xl font-bold text-gray-900">
+                           Estimated Completion Time ({formData.duration} Total Days)
+                       </h3>
+                       <div className="border-2 border-blue-500 p-6 rounded-lg">
+                           <div className="space-y-2">
+                               <label className="text-sm font-bold text-gray-700">Estimated Completion Time (Days)</label>
+                               <div className="relative">
+                                   <div 
+                                       className="w-full p-3 border border-gray-200 rounded-lg text-sm text-gray-900 flex items-center justify-between cursor-pointer bg-white hover:border-gray-300 transition-all"
+                                       onClick={() => setIsDurationDropdownOpen(!isDurationDropdownOpen)}
+                                   >
+                                       <span>{formData.duration} {formData.duration === 1 ? 'day' : 'days'}</span>
+                                       <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isDurationDropdownOpen ? 'rotate-180' : ''}`}/>
+                                   </div>
+
+                                   {isDurationDropdownOpen && (
+                                       <>
+                                         <div 
+                                             className="fixed inset-0 z-10" 
+                                             onClick={() => setIsDurationDropdownOpen(false)}
+                                         ></div>
+                                         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-lg z-20 max-h-[300px] overflow-y-auto">
+                                             {[...Array(14)].map((_, i) => {
+                                                 const val = i + 1;
+                                                 return (
+                                                     <div 
+                                                         key={val}
+                                                         className={`p-3 text-sm cursor-pointer hover:bg-gray-50 ${formData.duration === val ? 'bg-blue-50 font-semibold text-blue-900' : 'text-gray-900'}`}
+                                                         onClick={() => {
+                                                             setFormData({...formData, duration: val});
+                                                             setIsDurationDropdownOpen(false);
+                                                         }}
+                                                     >
+                                                         {val} {val === 1 ? 'day' : 'days'}
+                                                     </div>
+                                                 );
+                                             })}
+                                         </div>
+                                       </>
+                                   )}
+                               </div>
+                           </div>
+                       </div>
                    </div>
 
                    {/* Price Input */}
@@ -581,6 +723,46 @@ export default function CreateServicePage() {
              </div>
           </div>
         </>
+      )}
+
+      {/* Confirmation Modal */}
+      {isConfirmOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div 
+                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                  onClick={() => setIsConfirmOpen(false)}
+              ></div>
+              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-6">
+                      <div className="flex items-start gap-4 mb-4">
+                          <div className="flex-shrink-0 p-2 bg-blue-50 rounded-full">
+                              <div className="bg-[#0e2a6d] w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold">!</div>
+                          </div>
+                          <div>
+                              <h3 className="text-lg font-bold text-gray-900">Publish changes</h3>
+                              <p className="text-sm text-gray-500 mt-1">Do you want to publish these changes? It will appear in the marketplace listing</p>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-3 pt-2">
+                          <button 
+                              onClick={() => setIsConfirmOpen(false)}
+                              className="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                              Continue Editing
+                          </button>
+                          <button 
+                              onClick={() => {
+                                  setIsConfirmOpen(false);
+                                  handleSubmitConfirmed();
+                              }}
+                              className="flex-1 px-4 py-2.5 bg-[#0e2a6d] text-white text-sm font-bold rounded-lg hover:bg-[#002f70] transition-colors"
+                          >
+                              Save changes
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
 
     </div>
