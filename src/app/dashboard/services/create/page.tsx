@@ -1,5 +1,4 @@
-"use client";
-
+import { toast } from "sonner";
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Upload, Plus, Loader2, ArrowRight, CheckCircle, Star, X, Trash2, UserPlus, Landmark, FileText, Zap, MapPin, Calendar, Award, Truck, Headphones, ChevronDown, Check, Cloud, ArrowUp } from "lucide-react";
@@ -151,10 +150,11 @@ export default function CreateServicePage() {
                    setImages(prev => [...prev, result.url]);
                }
           } else {
-               alert("Image upload failed");
+               toast.error("Image upload failed");
           }
       } catch(err) {
           console.error(err);
+          toast.error("Error uploading image");
       } finally {
           setUploading(false);
           if (fileInputRef.current) fileInputRef.current.value = "";
@@ -217,13 +217,13 @@ export default function CreateServicePage() {
       if (profileLoading) return;
       
       if (!registeredCompany) {
-           alert("You must register a company first before you can post services.");
+           toast.error("You must register a company first before you can post services.");
            router.push("/register-company"); 
            return;
       }
 
       if (registeredCompany.status !== 'APPROVED') {
-           alert("Your company registration is pending approval. You cannot post services until it is approved.");
+           toast.error("Your company registration is pending approval. You cannot post services until it is approved.");
            return; 
       }
       setIsConfirmOpen(true);
@@ -276,14 +276,14 @@ export default function CreateServicePage() {
 
           const data = await res.json();
           if (data.success) {
-            alert(existingServiceId ? "Service updated successfully!" : "Service created successfully!");
+            toast.success(existingServiceId ? "Service updated successfully!" : "Service created successfully!");
           } else {
             console.error("Creation/Update failed:", data);
-            alert("Failed to save service: " + (data.message || "Unknown error"));
+            toast.error("Failed to save service: " + (data.message || "Unknown error"));
           }
       } catch (err) {
         console.error(err);
-        alert("Error saving service");
+        toast.error("Error saving service");
       } finally {
         setLoading(false);
       }

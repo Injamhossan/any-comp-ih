@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import React, { useState, Suspense } from "react";
 import Image from "next/image";
 import { Upload, ChevronRight, X, Plus, Trash2, Check, User, Building, Zap, MapPin, CalendarCheck, Award, Truck, Headphones } from "lucide-react";
@@ -149,7 +150,7 @@ function CreateSpecialistContent() {
                         }
                     } else {
                         console.error("Framework Error:", data);
-                        alert("Failed to load specialist data.");
+                        toast.error("Failed to load specialist data.");
                     }
                 })
                 .catch(err => {
@@ -191,11 +192,11 @@ function CreateSpecialistContent() {
                     return newImages;
                 });
             } else {
-                alert("Upload failed: " + (data.error || "Unknown error"));
+                toast.error("Upload failed: " + (data.error || "Unknown error"));
             }
         } catch (error) {
             console.error("Upload Error:", error);
-            alert("Upload failed due to network or server error.");
+            toast.error("Upload failed due to network or server error.");
         } finally {
             setUploading(prev => {
                 const newUploading = [...prev];
@@ -382,11 +383,12 @@ function CreateSpecialistContent() {
             }
 
             await res.json();
+            toast.success("Specialist saved successfully!");
             router.push('/admin');
             router.refresh();
         } catch (error: any) {
             console.error(error);
-            alert(`Error saving specialist: ${error.message}`);
+            toast.error(`Error saving specialist: ${error.message}`);
         } finally {
             setIsSubmitting(false);
         }

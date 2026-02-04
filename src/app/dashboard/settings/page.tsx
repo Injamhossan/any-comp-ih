@@ -1,5 +1,4 @@
-"use client";
-
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useState, useRef } from "react";
 import { Loader2, Camera, User as UserIcon, Building2 } from "lucide-react";
@@ -112,15 +111,16 @@ export default function SettingsPage() {
                   await auth.currentUser.reload();
               }
               
+              toast.success("Profile photo updated successfully!");
               // 4. Force reload to ensure all components (Sidebar) pick up the new image
               window.location.reload();
 
           } else {
-              alert("Upload failed: " + (result.error || "Unknown error"));
+              toast.error("Upload failed: " + (result.error || "Unknown error"));
           }
       } catch (err) {
           console.error(err);
-          alert("Error uploading image");
+          toast.error("Error uploading image");
       } finally {
           setUploading(false);
       }
@@ -144,16 +144,13 @@ export default function SettingsPage() {
           if (result.success) {
               const newLogoUrl = result.url;
               setFormData(prev => ({ ...prev, company_logo_url: newLogoUrl }));
-              // We'll save this when the user clicks "Save Changes" or we can do auto-save.
-              // For consistency with profile pic, let's keep it manual save with the form, 
-              // or do we want auto-save? The request for profile pic was specific to Sidebar connection.
-              // Let's stick to manual save for company data unless requested otherwise.
+              toast.success("Logo uploaded successfully. Click Save to apply changes.");
           } else {
-              alert("Upload failed: " + (result.error || "Unknown error"));
+              toast.error("Upload failed: " + (result.error || "Unknown error"));
           }
       } catch (err) {
           console.error(err);
-          alert("Error uploading logo");
+          toast.error("Error uploading logo");
       } finally {
           setUploadingCompanyLogo(false);
       }
@@ -192,14 +189,14 @@ export default function SettingsPage() {
                   });
               }
               
-              alert("Profile updated successfully!");
+              toast.success("Profile updated successfully!");
               window.location.reload();
           } else {
-              alert("Failed to update profile: " + data.message);
+              toast.error("Failed to update profile: " + data.message);
           }
       } catch (error) {
           console.error(error);
-          alert("An error occurred.");
+          toast.error("An error occurred during save.");
       } finally {
           setSaving(false);
       }

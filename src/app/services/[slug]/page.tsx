@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, CheckCircle, ArrowRight, User } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 
 export default function ServiceDetailsPage() {
@@ -53,7 +54,7 @@ export default function ServiceDetailsPage() {
       // Validation for Guest
       if (!user && showGuestForm) {
           if (!guestDetails.name || !guestDetails.email || !guestDetails.phone) {
-              alert("Please fill in all required fields (Name, Email, Phone).");
+              toast.error("Please fill in all required fields (Name, Email, Phone).");
               return;
           }
       }
@@ -71,7 +72,7 @@ export default function ServiceDetailsPage() {
                const profileData = await profileRes.json();
                
                if (!profileData.success || !profileData.data) {
-                   alert("User profile not found. Please ensure you are registered.");
+                   toast.error("User profile not found. Please ensure you are registered.");
                    setPurchasing(false);
                    return;
                }
@@ -93,7 +94,7 @@ export default function ServiceDetailsPage() {
           
           const result = await res.json();
           if (result.success) {
-              alert("Order placed successfully! We will contact you shortly.");
+              toast.success("Order placed successfully! We will contact you shortly.");
               if (user) {
                   // Optional: Redirect registered users to dashboard
                   // router.push("/dashboard"); 
@@ -103,11 +104,11 @@ export default function ServiceDetailsPage() {
                   setGuestDetails({ name: "", email: "", phone: "", requirements: "" });
               }
           } else {
-              alert("Failed to place order: " + (result.message || "Unknown error"));
+              toast.error("Failed to place order: " + (result.message || "Unknown error"));
           }
       } catch (err) {
           console.error(err);
-          alert("Error processing request");
+          toast.error("Error processing request");
       } finally {
           setPurchasing(false);
       }
