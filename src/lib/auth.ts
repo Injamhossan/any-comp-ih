@@ -34,7 +34,7 @@ export const authOptions: NextAuthOptions = {
           where: {
             email: credentials.email
           }
-        });
+        }) as any;
 
         if (!user || !user.password) {
           throw new Error("Invalid credentials");
@@ -67,8 +67,7 @@ export const authOptions: NextAuthOptions = {
         // Initial sign in
         if (user) {
             token.id = user.id;
-            // @ts-ignore - The adapter might not type custom fields by default in 'user', need to cast or access directly
-            token.role = (user as any).role;
+            token.role = user.role;
         }
 
         // Refetch user on every request to ensure role/data is up to date (optional, but good for role changes)

@@ -1,4 +1,3 @@
-
 # ST Comp Holdings Sdn Bhd - Service Marketplace Platform
 
 A modern, full-stack web application designed for **ST Comp Holdings Sdn Bhd** to facilitate corporate service purchases, specialist management, and order tracking.
@@ -21,11 +20,11 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
     *   **Toast Notifications**: [Sonner](https://sonner.emilkowal.ski/) for elegant, non-intrusive alerts.
 
 ### **Backend**
-*   **API**: Next.js Server Actions & API Routes.
+*   **API**: Next.js API Routes (App Router).
 *   **Database**: [PostgreSQL](https://www.postgresql.org/) hosted on **Neon Tech** (Serverless Postgres).
 *   **ORM**: [Prisma](https://www.prisma.io/) for type-safe database access and schema management.
-*   **Authentication**: [Firebase Auth](https://firebase.google.com/docs/auth) for managing User, Specialist, and Admin identities.
-*   **Storage**: [Firebase Storage](https://firebase.google.com/docs/storage) for storing images (Profile photos, Service images, etc.).
+*   **Authentication**: [NextAuth.js](https://next-auth.js.org/) (Auth.js) with Google & Credentials providers.
+*   **Storage**: **Local Storage** for storing images (Profile photos, Service images, etc.) within the `public/uploads` directory.
 
 ---
 
@@ -36,26 +35,23 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
 *   **Service Details**: Comprehensive pages showing price breakdowns, secretary profiles, certifications (MAICSA, SSM), and completion time.
 *   **Dynamic Pricing**: Calculates Base Price + Platform Fees automatically.
 
-### 2. **Guest & User Checkout**
-*   **Flexible Access**: 
-    *   **Registered Users**: One-click purchase using their profile data.
-    *   **Guest Users**: Public users can purchase services *without* creating an account by simply providing contact details (Name, Email, Phone).
-*   **Order Creation**: Atomic transactions ensure orders and purchase counts are updated reliably.
+### 2. **Authentication & Identity**
+*   **NextAuth Implementation**: Secure JWT-based session management.
+*   **Google Login**: Seamless OAuth integration for users.
+*   **Credentials Login**: Email/Password authentication using `bcrypt` for hashing.
+*   **Role-Based Access**: Specialized views for Users, Specialists, and Admins.
 
 ### 3. **Dashboards**
-*   **Customer Dashboard**: View "My Purchases" and track order status.
-*   **Specialist/Company Dashboard**: 
-    *   **Manage Services**: Create, Edit, and Publish services with a rich editor.
-    *   **Client Orders**: View incoming orders from customers (including Guest details) in a dedicated "Sales" tab.
-    *   **Analytics**: Track purchase counts and ratings.
+*   **Customer Dashboard**: View "My Companies", track order status, and manage profile settings.
 *   **Admin Panel**: 
     *   **Verify Specialists**: Approve/Reject company registrations.
+    *   **Client Management**: Professional table view with detailed registration modals.
     *   **Master Data**: Manage global service offerings and configurations.
 
 ### 4. **Modern UI/UX**
 *   **Responsive Design**: Mobile-first approach.
 *   **Real-time Feedback**: Instant validation and success/error toasts using *Sonner*.
-*   **Rich Media**: Drag-and-drop image uploads for profiles and services.
+*   **Local Media Handling**: Efficient local file uploads with automatic directory management.
 
 ---
 
@@ -75,10 +71,13 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
 │   ├── components/     # Reusable UI Components
 │   │   ├── ui/         # Shadcn UI Primitives (Button, Input, etc.)
 │   │   └── ...
-│   ├── context/        # React Context (AuthContext, etc.)
-│   ├── firebase/       # Firebase Config
-│   └── modules/        # Domain-specific logic
-└── public/             # Static Assets
+│   ├── context/        # React Context (AuthContext)
+│   ├── lib/            # Utility libraries (DB client, Auth options)
+│   ├── modules/        # Domain-specific logic (Controllers & Services)
+│   └── types/          # Global TypeScript definitions
+├── public/
+│   └── uploads/        # Local file storage for uploaded images
+└── ...
 ```
 
 ---
@@ -106,20 +105,22 @@ Follow these steps to set up the project locally.
     ```
 
 3.  **Environment Setup:**
-    Create a `.env` file in the root directory:
+    Create a `.env.local` file in the root directory:
     ```env
     # Database (Neon Tech)
     DATABASE_URL="postgresql://neondb_owner:..."
 
-    # Firebase Config
-    NEXT_PUBLIC_FIREBASE_API_KEY=...
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-    # ... other firebase keys
+    # Next Auth
+    NEXTAUTH_URL="http://localhost:3000"
+    NEXTAUTH_SECRET="your-secret-here"
+
+    # Google Auth (Optional for Dev)
+    GOOGLE_CLIENT_ID="..."
+    GOOGLE_CLIENT_SECRET="..."
     ```
 
 4.  **Database Setup:**
-    Sync your Prisma schema with the Neon database:
+    Sync your Prisma schema with the database:
     ```bash
     npx prisma generate
     npx prisma db push
@@ -141,6 +142,7 @@ Follow these steps to set up the project locally.
 ## 📝 Key Commands
 
 *   `pnpm dev`: Start dev server.
+*   `pnpm build`: Build the application for production.
 *   `npx prisma studio`: Open GUI to manage database records.
 *   `npx prisma db push`: Sync schema changes to DB.
 *   `npx prisma generate`: Update TypeScript client after schema changes.
@@ -149,9 +151,10 @@ Follow these steps to set up the project locally.
 
 ## 🔒 Security & Best Practices
 
-*   **Atomic Transactions**: Critical operations (like placing an order) use Prisma Transactions to prevent data inconsistency.
-*   **Type Safety**: Full TypeScript implementation across frontend and backend.
-*   **Environment Variables**: Sensitive keys are strictly kept in `.env` and not committed.
+*   **JWT Authentication**: Securely signed tokens with expiration.
+*   **Type Safety**: Complete TypeScript implementation.
+*   **Server-Side Logic**: Business logic is encapsulated in controllers for separation of concerns.
+*   **Encryption**: User passwords are saved as modern `bcrypt` hashes.
 
 ---
 

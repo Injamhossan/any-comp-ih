@@ -38,8 +38,8 @@ export default function SettingsPage() {
         setFormData(prev => ({ 
             ...prev, 
             email: user.email!, 
-            name: user.displayName || "",
-            photoUrl: user.photoURL || "" 
+            name: user.name || "",
+            photoUrl: user.image || "" 
         }));
         
         fetch(`/api/user/profile?email=${encodeURIComponent(user.email)}`)
@@ -48,9 +48,9 @@ export default function SettingsPage() {
                 if (data.success && data.data) {
                     setFormData(prev => ({
                         ...prev,
-                        name: data.data.name || user.displayName || "",
+                        name: data.data.name || user.name || "",
                         phone: data.data.phone || "",
-                        photoUrl: data.data.photo_url || user.photoURL || "",
+                        photoUrl: data.data.image || user.image || "",
                         description: data.data.description || "",
                         certifications: (data.data.certifications || []).join(", "),
                         company_name: data.data.company_name || "",

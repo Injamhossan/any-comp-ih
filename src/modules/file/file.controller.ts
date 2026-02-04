@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { app } from "@/firebase/firebase.config";
-
-// Polyfill XMLHttpRequest for Firebase Storage in Node.js environment
-// 'storage/unknown' (404) often occurs in Node because the SDK relies on XHR
-const XMLHttpRequest = require("xhr2");
-global.XMLHttpRequest = XMLHttpRequest;
+import path from "path";
+import fs from "fs/promises";
 
 export const uploadFile = async (req: NextRequest) => {
   try {
@@ -18,26 +13,27 @@ export const uploadFile = async (req: NextRequest) => {
 
     const fileObject = file as File;
     const arrayBuffer = await fileObject.arrayBuffer();
-    // Convert ArrayBuffer to Uint8Array which is compatible with Firebase Storage
-    const uint8Array = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
     
     // Sanitize filename
     const sanitizedFilename = fileObject.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9.\-_]/g, '');
     const filename = `${Date.now()}_${sanitizedFilename}`;
     
-    // Initialize Firebase Storage with explicit bucket
-    // This helps resolve issues where the default app config might be missing the bucket
-    const storage = getStorage(app, "gs://any-comp-project.appspot.com");
-    console.log("Using Firebase Storage Bucket:", storage.app.options.storageBucket);
-    const storageRef = ref(storage, `uploads/${filename}`);
+    // Set up upload directory (public/uploads)
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    
+    // Create directory if it doesn't exist
+    try {
+        await fs.access(uploadDir);
+    } catch {
+        await fs.mkdir(uploadDir, { recursive: true });
+    }
 
-    // Upload to Firebase Storage
-    const snapshot = await uploadBytes(storageRef, uint8Array, {
-        contentType: fileObject.type
-    });
+    const filePath = path.join(uploadDir, filename);
+    await fs.writeFile(filePath, buffer);
 
-    // Get the public download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    // The public URL for the file
+    const downloadURL = `/uploads/${filename}`;
 
     return NextResponse.json({ 
         success: true, 
@@ -47,8 +43,7 @@ export const uploadFile = async (req: NextRequest) => {
         size: fileObject.size
     });
   } catch (error: any) {
-    console.error("Upload handler error full object:", JSON.stringify(error, null, 2));
-    console.error("Upload handler error:", error);
-    return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
+    console.error("Local Upload Error:", error);
+    return NextResponse.json({ error: error.message || "Upload failed" }, { status: 500 });
   }
 };

@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { app } from "@/firebase/firebase.config";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
-const auth = getAuth(app);
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -23,14 +20,20 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Update the user's display name
-      if (auth.currentUser) {
-           await updateProfile(auth.currentUser, {
-              displayName: name
-           });
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Registration successful! Please login.");
+        router.push("/login"); 
+      } else {
+        setError(data.message || "Failed to register");
       }
-      router.push("/"); // Redirect to home on success
     } catch (err: any) {
       setError(err.message || "Failed to register");
     } finally {

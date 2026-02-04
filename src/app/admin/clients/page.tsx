@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, Search, Building2, User, MoreHorizontal, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Loader2, Search, Building2, User, MoreHorizontal, CheckCircle, XCircle, Clock, Eye, X } from "lucide-react";
 import Image from "next/image";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/clients')
@@ -33,9 +35,7 @@ export default function ClientsPage() {
           });
           const data = await res.json();
           if (!data.success) {
-              // Revert if failed
               alert("Failed to update status");
-              // Ideally re-fetch or revert state here
           }
       } catch (err) {
           console.error(err);
@@ -59,7 +59,7 @@ export default function ClientsPage() {
 
   return (
     <div className="flex-1 bg-white min-h-screen font-sans text-gray-900 px-6 py-8">
-      {/* ... Header ... */}
+      {/* Header */}
       <div className="sm:flex sm:items-center sm:justify-between mb-8">
         <div>
            <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
@@ -91,7 +91,7 @@ export default function ClientsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                <th scope="col" className="relative px-6 py-3 text-center"><span className="sr-only">Actions</span>Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -114,9 +114,9 @@ export default function ClientsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                           {client.user?.photo_url ? (
-                               <Image src={client.user.photo_url} alt="" fill className="object-cover"/>
+                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden relative border border-gray-200">
+                           {client.user?.image ? (
+                               <Image src={client.user.image} alt="" fill className="object-cover"/>
                            ) : (
                                <User className="h-4 w-4 text-gray-500"/>
                            )}
@@ -147,9 +147,19 @@ export default function ClientsPage() {
                     {new Date(client.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-indigo-600 hover:text-indigo-900">
-                        <MoreHorizontal className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                        <button 
+                            onClick={() => { setSelectedClient(client); setIsModalOpen(true); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-[#0e2a6d] rounded-md text-xs font-bold hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100" 
+                            title="View Details"
+                        >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View</span>
+                        </button>
+                        <button className="p-1.5 h-8 w-8 flex items-center justify-center text-gray-400 hover:text-gray-600">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -161,6 +171,98 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+
+      {/* Details Modal */}
+      {isModalOpen && selectedClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                      <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center overflow-hidden relative">
+                              {selectedClient.companyLogoUrl ? (
+                                  <Image src={selectedClient.companyLogoUrl} alt="" fill className="object-cover" />
+                              ) : (
+                                  <Building2 className="h-6 w-6 text-indigo-600" />
+                              )}
+                          </div>
+                          <div>
+                              <h3 className="text-xl font-bold text-gray-900">{selectedClient.companyName}</h3>
+                              <p className="text-sm text-gray-500">Registration Details</p>
+                          </div>
+                      </div>
+                      <button 
+                        onClick={() => setIsModalOpen(false)}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                      >
+                          <X className="h-5 w-5 text-gray-400" />
+                      </button>
+                  </div>
+                  
+                  <div className="p-6 space-y-8 overflow-y-auto max-h-[70vh]">
+                      <div className="grid grid-cols-2 gap-6">
+                          <div>
+                              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Company Name</label>
+                              <p className="mt-1 text-gray-900 font-medium">{selectedClient.companyName}</p>
+                          </div>
+                          <div>
+                              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Company Type</label>
+                              <p className="mt-1 text-gray-900 font-medium">{selectedClient.companyType || "Not Specified"}</p>
+                          </div>
+                          <div>
+                              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</label>
+                              <div className="mt-1">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getStatusColor(selectedClient.status)}`}>
+                                      {selectedClient.status}
+                                  </span>
+                              </div>
+                          </div>
+                          <div>
+                              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Created At</label>
+                              <p className="mt-1 text-gray-900 font-medium">{new Date(selectedClient.createdAt).toLocaleString()}</p>
+                          </div>
+                      </div>
+
+                      <div className="pt-6 border-t border-gray-100">
+                          <h4 className="text-sm font-bold text-gray-900 mb-4">Applicant Information</h4>
+                          <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl">
+                              <div className="h-12 w-12 rounded-full bg-white overflow-hidden relative border border-gray-200">
+                                  {selectedClient.user?.image ? (
+                                      <Image src={selectedClient.user.image} alt="" fill className="object-cover" />
+                                  ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-gray-400">
+                                          <User className="h-6 w-6" />
+                                      </div>
+                                  )}
+                              </div>
+                              <div>
+                                  <p className="text-sm font-bold text-gray-900">{selectedClient.user?.name || "Unknown User"}</p>
+                                  <p className="text-xs text-gray-500">{selectedClient.user?.email}</p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="p-6 bg-gray-50 flex justify-end gap-3">
+                      <button 
+                        onClick={() => setIsModalOpen(false)}
+                        className="px-6 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                          Close
+                      </button>
+                      <button 
+                        className="px-6 py-2 bg-[#0e2a6d] text-white rounded-lg text-sm font-bold hover:bg-[#002f70] transition-colors shadow-lg shadow-indigo-100"
+                        onClick={() => {
+                            // Link to full management or actions if needed
+                            setIsModalOpen(false);
+                            alert("More actions can be implemented here.");
+                        }}
+                      >
+                          Manage Request
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 }

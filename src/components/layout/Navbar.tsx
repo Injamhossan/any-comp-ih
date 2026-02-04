@@ -5,17 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { Search, Mail, Bell, User, ChevronDown, LogOut, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getAuth, signOut } from "firebase/auth";
-import { app } from "@/firebase/firebase.config";
-
-const auth = getAuth(app);
 
 export default function Navbar() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await logout();
     setIsProfileOpen(false);
   };
 
@@ -97,10 +93,10 @@ export default function Navbar() {
                       onClick={() => setIsProfileOpen(!isProfileOpen)}
                       className="h-8 w-8 overflow-hidden rounded-full border border-gray-200"
                     >
-                      {user.photoURL ? (
+                      {user.image ? (
                         <Image 
-                           src={user.photoURL} 
-                           alt={user.displayName || "User"} 
+                           src={user.image} 
+                           alt={user.name || "User"} 
                            width={32} 
                            height={32} 
                            className="object-cover h-full w-full"
@@ -116,7 +112,7 @@ export default function Navbar() {
                     {isProfileOpen && (
                       <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                         <div className="px-4 py-2 border-b">
-                            <p className="text-sm font-medium truncate">{user.displayName || "User"}</p>
+                            <p className="text-sm font-medium truncate">{user.name || "User"}</p>
                             <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
                         {user.email === "admin@anycomp.com" ? (

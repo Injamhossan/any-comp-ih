@@ -42,27 +42,31 @@ function classNames(...classes: string[]) {
 
 export default function UserSidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+   const { user } = useAuth();
+  const [profileData, setProfileData] = useState<{name?: string, image?: string, company_name?: string, company_logo_url?: string}>({});
   const [companyName, setCompanyName] = useState<string>("Loading...");
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
-      // Try to fetch one company to display
       if (user?.email) {
-          fetch(`/api/user/companies?email=${encodeURIComponent(user.email)}`)
+          fetch(`/api/user/profile?email=${encodeURIComponent(user.email)}`)
             .then(res => res.json())
             .then(data => {
-                if (data.success && data.data && data.data.length > 0) {
-                    setCompanyName(data.data[0].companyName);
-                    setHasCompany(true);
+                if (data.success && data.data) {
+                    const profile = data.data;
+                    setProfileData(profile);
+                    
+                    const name = profile.company_name || 
+                               (profile.registrations && profile.registrations[0]?.companyName) || 
+                               "No Company Registered";
+                    setCompanyName(name);
+                    setHasCompany(!!(profile.company_name || (profile.registrations && profile.registrations.length > 0)));
                 } else {
                     setCompanyName("No Company Registered");
-                    setHasCompany(false);
                 }
             })
             .catch(() => {
                 setCompanyName("No Company Registered");
-                setHasCompany(false);
             });
       }
   }, [user]);
@@ -72,6 +76,10 @@ export default function UserSidebar() {
       if (item.name === "Register Company" && hasCompany) return false;
       return true;
   });
+
+  // Use profile data if available, fallback to user session
+  const displayName = profileData.name || user?.name || "User";
+  const displayImage = profileData.image || profileData.company_logo_url || user?.image;
 
   return (
     <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 py-6">
@@ -85,8 +93,8 @@ export default function UserSidebar() {
             title="Edit Profile"
           >
               <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden relative border border-gray-100 group-hover:border-blue-200 transition-colors">
-                  {user?.photoURL ? (
-                      <Image src={user.photoURL} alt="Profile" fill className="object-cover" />
+                  {displayImage ? (
+                      <Image src={displayImage} alt="Profile" fill className="object-cover" />
                   ) : (
                       <div className="flex h-full w-full items-center justify-center text-gray-400">
                           <User className="h-6 w-6" />
@@ -95,7 +103,7 @@ export default function UserSidebar() {
               </div>
               <div className="flex flex-col overflow-hidden">
                   <span className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
-                      {user?.displayName || "User"}
+                      {user?.name || "User"}
                   </span>
                   <span className="text-xs text-blue-600 truncate font-medium">
                       {companyName}

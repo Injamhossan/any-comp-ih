@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
                 select: {
                     name: true,
                     email: true,
-                    photo_url: true
+                    image: true
                 }
             }
         },

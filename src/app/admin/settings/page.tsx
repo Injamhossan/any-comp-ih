@@ -1,19 +1,18 @@
 "use client";
 
+
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useState, useRef } from "react";
 import { Loader2, Camera, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
-import { getAuth, updateProfile } from "firebase/auth";
-import { app } from "@/firebase/firebase.config";
+import { signOut } from "next-auth/react";
+import { toast } from "sonner";
 
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const auth = getAuth(app);
   
   const [formData, setFormData] = useState({
       name: "",
@@ -85,14 +84,10 @@ export default function AdminSettingsPage() {
                   })
               });
 
-              if (auth.currentUser) {
-                  await updateProfile(auth.currentUser, {
-                      photoURL: newPhotoUrl
-                  });
-              }
+              toast.success("Profile photo updated");
               window.location.reload();
           } else {
-              alert("Upload failed");
+              toast.error("Upload failed");
           }
       } catch (err) {
           console.error(err);
@@ -118,24 +113,19 @@ export default function AdminSettingsPage() {
           const data = await res.json();
 
           if (data.success) {
-              if (auth.currentUser) {
-                  await updateProfile(auth.currentUser, {
-                      displayName: formData.name,
-                      photoURL: formData.photoUrl
-                  });
-              }
-              alert("Admin profile updated successfully!");
+              toast.success("Admin profile updated successfully!");
               window.location.reload();
           } else {
-              alert("Failed to update profile: " + data.message);
+              toast.error("Failed to update profile: " + data.message);
           }
       } catch (error) {
           console.error(error);
-          alert("An error occurred.");
+          toast.error("An error occurred.");
       } finally {
           setSaving(false);
       }
   };
+
 
   return (
     <div className="flex-1 bg-white min-h-screen font-sans text-gray-900 px-6 py-8">
@@ -257,11 +247,7 @@ export default function AdminSettingsPage() {
             <div className="p-6">
                 <p className="text-sm text-gray-600 mb-4">Securely sign out of your admin session.</p>
                 <button 
-                    onClick={() => {
-                        import("firebase/auth").then(({ signOut }) => {
-                            signOut(auth).then(() => router.push("/login"));
-                        });
-                    }}
+                    onClick={() => signOut({ callbackUrl: "/login" })}
                     className="bg-white text-red-700 hover:bg-red-50 border border-red-200 px-6 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
                 >
                     Sign Out

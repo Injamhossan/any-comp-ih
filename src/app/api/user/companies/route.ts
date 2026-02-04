@@ -72,8 +72,17 @@ export async function POST(req: NextRequest) {
               userId: user.id,
               companyName,
               companyType,
-              companyLogoUrl, // Optional
+              companyLogoUrl, 
               status: 'PENDING'
+          }
+      });
+
+      // Update User Profile with company info for easier access
+      await db.user.update({
+          where: { id: user.id },
+          data: {
+              company_name: companyName,
+              company_logo_url: companyLogoUrl
           }
       });
 
