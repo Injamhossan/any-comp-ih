@@ -1,3 +1,5 @@
+"use client";
+
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useState, useRef } from "react";
