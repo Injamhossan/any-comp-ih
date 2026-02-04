@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Loader2, ChevronLeft, CheckCircle, Upload, Camera } from "lucide-react";
+import { ImageUploadBox } from "@/components/ui/image-upload-box";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -162,35 +163,13 @@ export default function RegisterYourCompanyPage() {
                              {/* Logo Upload Section */}
                              <div>
                                  <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo (Optional)</label>
-                                 <div className="flex items-center gap-4">
-                                     <div className="h-20 w-20 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center relative overflow-hidden group">
-                                         {formData.companyLogoUrl ? (
-                                             <Image src={formData.companyLogoUrl} alt="Preview" fill className="object-contain p-2" />
-                                         ) : (
-                                             <Upload className="h-6 w-6 text-gray-400" />
-                                         )}
-                                          {uploading && (
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                                <Loader2 className="h-5 w-5 text-white animate-spin" />
-                                            </div>
-                                        )}
-                                     </div>
-                                     <div>
-                                         <button 
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploading}
-                                            className="text-sm text-blue-600 font-medium hover:text-blue-700 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-md transition-colors"
-                                         >
-                                             {uploading ? "Uploading..." : "Upload Logo"}
-                                         </button>
-                                         <p className="text-xs text-gray-400 mt-1">Recommended size: 400x400px</p>
-                                     </div>
-                                     <input 
-                                        type="file" 
-                                        ref={fileInputRef} 
-                                        onChange={handleLogoUpload} 
-                                        className="hidden" 
-                                        accept="image/*"
+                                 <div className="max-w-[200px]">
+                                     <ImageUploadBox 
+                                        image={formData.companyLogoUrl}
+                                        onUpload={(url) => setFormData(prev => ({ ...prev, companyLogoUrl: url }))}
+                                        onDelete={() => setFormData(prev => ({ ...prev, companyLogoUrl: "" }))}
+                                        label="Upload Logo"
+                                        height="h-[180px]"
                                      />
                                  </div>
                              </div>

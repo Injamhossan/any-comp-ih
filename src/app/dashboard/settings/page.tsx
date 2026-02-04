@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { ImageUploadBox } from "@/components/ui/image-upload-box";
 import React, { useEffect, useState, useRef } from "react";
 import { Loader2, Camera, User as UserIcon, Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -258,7 +259,19 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        {/* Company Logo Section Removed as per request */}
+                        {/* Company Logo Section */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
+                           <div className="max-w-[200px]">
+                                <ImageUploadBox
+                                    image={formData.company_logo_url}
+                                    onUpload={(url) => setFormData(prev => ({ ...prev, company_logo_url: url }))}
+                                    onDelete={() => setFormData(prev => ({ ...prev, company_logo_url: "" }))}
+                                    label="Company Logo"
+                                    height="h-[160px]"
+                                />
+                           </div>
+                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 max-w-2xl">

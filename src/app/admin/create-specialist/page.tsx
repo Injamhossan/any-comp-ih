@@ -5,6 +5,7 @@ import React, { useState, Suspense } from "react";
 import Image from "next/image";
 import { Upload, ChevronRight, X, Plus, Trash2, Check, User, Building, Zap, MapPin, CalendarCheck, Award, Truck, Headphones } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ImageUploadBox } from "@/components/ui/image-upload-box";
 import uploadIcon from "@/assets/image/upload.png";
 import stcImage from "@/assets/image/STC.png";
 import maicsaImage from "@/assets/certification/Maicsa.png";
@@ -799,6 +800,79 @@ function CreateSpecialistContent() {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Image Grid */}
+                        <div className="grid grid-cols-2 gap-4 auto-rows-[200px]">
+                            <div className="col-span-2 row-span-2 h-full">
+                                {/* Large Main Image */}
+                                <ImageUploadBox
+                                    image={images[0]?.url}
+                                    onUpload={(url) => {
+                                        setImages(prev => {
+                                            const newImages = [...prev];
+                                            newImages[0] = { url, file_name: "image_1", mime_type: "image/jpeg", file_size: 0 };
+                                            return newImages;
+                                        });
+                                    }}
+                                    onDelete={() => {
+                                        setImages(prev => {
+                                            const newImages = [...prev];
+                                            delete newImages[0];
+                                            return newImages;
+                                        });
+                                    }}
+                                    label="Main Service Image"
+                                    height="h-full"
+                                    className="h-full"
+                                />
+                            </div>
+                            <div className="col-span-1 row-span-1">
+                                {/* Secondary Image 1 */}
+                                <ImageUploadBox
+                                    image={images[1]?.url}
+                                    onUpload={(url) => {
+                                        setImages(prev => {
+                                            const newImages = [...prev];
+                                            newImages[1] = { url, file_name: "image_2", mime_type: "image/jpeg", file_size: 0 };
+                                            return newImages;
+                                        });
+                                    }}
+                                    onDelete={() => {
+                                        setImages(prev => {
+                                            const newImages = [...prev];
+                                            delete newImages[1];
+                                            return newImages;
+                                        });
+                                    }}
+                                    label="Side View 1"
+                                    height="h-full"
+                                    className="h-full"
+                                />
+                            </div>
+                            <div className="col-span-1 row-span-1">
+                                {/* Secondary Image 2 */}
+                                <ImageUploadBox
+                                    image={images[2]?.url}
+                                    onUpload={(url) => {
+                                        setImages(prev => {
+                                            const newImages = [...prev];
+                                            newImages[2] = { url, file_name: "image_3", mime_type: "image/jpeg", file_size: 0 };
+                                            return newImages;
+                                        });
+                                    }}
+                                    onDelete={() => {
+                                        setImages(prev => {
+                                            const newImages = [...prev];
+                                            delete newImages[2];
+                                            return newImages;
+                                        });
+                                    }}
+                                    label="Side View 2"
+                                    height="h-full"
+                                    className="h-full"
+                                />
                             </div>
                         </div>
 
