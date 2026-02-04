@@ -43,7 +43,16 @@ export const getSpecialistById = async (id: string): Promise<Specialist | null> 
 };
 
 export const getSpecialistByOwner = async (email: string, name?: string): Promise<Specialist | null> => {
-   // Fallback: Search by Name first since email migration might be blocked
+   // 1. Search by Email (More reliable)
+   if (email) {
+       const byEmail = await prisma.specialist.findFirst({
+           where: { secretary_email: email, deleted_at: null },
+           include: { media: true }
+       });
+       if (byEmail) return byEmail;
+   }
+
+   // 2. Fallback: Search by Name
    if (name) {
        const byName = await prisma.specialist.findFirst({
            where: { secretary_name: name, deleted_at: null },

@@ -76,7 +76,7 @@ export default function CreateServicePage() {
                         }
                     } else {
                         // NEW SERVICE - Dynamic Title based on Company Name AND Type
-                        const reg = profileResult.data.registrations?.[0];
+                        const reg = profileResult.data?.registrations?.[0];
                         if (reg) {
                             let parts = [];
                             
@@ -253,6 +253,7 @@ export default function CreateServicePage() {
             final_price: total,
             platform_fee: processingFee,
             secretary_name: profileData?.name || user?.displayName || "Unknown Specialist",
+            secretary_email: user?.email,
             secretary_company: displayCompanyName,  
             avatar_url: profileData?.photo_url || user?.photoURL,
             verification_status: "PENDING",
