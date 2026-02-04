@@ -13,7 +13,7 @@ import {
   Settings 
 } from "lucide-react";
 import Image from "next/image";
-import STCLogo from "@/app/assets/image/STC.png";
+import STCLogo from "@/assets/image/STC.png";
   
 const navigation = [
   { name: "Specialists", href: "/admin", icon: Tag },

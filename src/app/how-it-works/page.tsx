@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/layout/Navbar";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, UserPlus, CreditCard, Rocket } from "lucide-react";

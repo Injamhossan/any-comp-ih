@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, ShieldCheck, Clock, FileText, Monitor, PenTool, Building } from "lucide-react";
 

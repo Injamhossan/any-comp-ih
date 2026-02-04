@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { FileSpreadsheet, Building2, Scale, Calculator, ArrowRight } from "lucide-react";
 

@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import SpecialistCard from "@/components/SpecialistCard";
+import Navbar from "@/components/layout/Navbar";
+import SpecialistCard from "@/components/cards/SpecialistCard";
 import { ChevronRight, Home, ChevronDown } from "lucide-react";
 
 // Interface matching the backend response

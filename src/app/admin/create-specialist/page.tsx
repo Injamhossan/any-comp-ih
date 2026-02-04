@@ -4,11 +4,11 @@ import React, { useState, Suspense } from "react";
 import Image from "next/image";
 import { Upload, ChevronRight, X, Plus, Trash2, Check, User, Building, Zap, MapPin, CalendarCheck, Award, Truck, Headphones } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import uploadIcon from "@/app/assets/image/upload.png";
-import stcImage from "@/app/assets/image/STC.png";
-import maicsaImage from "@/app/assets/certification/Maicsa.png";
-import ssmImage from "@/app/assets/certification/SSM.png";
-import image6 from "@/app/assets/certification/image 6.png";
+import uploadIcon from "@/assets/image/upload.png";
+import stcImage from "@/assets/image/STC.png";
+import maicsaImage from "@/assets/certification/Maicsa.png";
+import ssmImage from "@/assets/certification/SSM.png";
+import image6 from "@/assets/certification/image 6.png";
 
 const ASSETS = [
     { name: "Default", src: stcImage },
