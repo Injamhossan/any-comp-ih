@@ -11,12 +11,13 @@ import { Order } from "@/entities/Order";
 export const AppDataSource = new DataSource({
     type: "postgres",
     url: process.env.DATABASE_URL,
-    synchronize: true,
+    synchronize: true, // Note: Unsafe for production, consider migrations
     logging: false,
     entities: [
         Specialist, Media, ServiceOffering, ServiceOfferingMasterList,
         PlatformFee, User, Order
     ],
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     subscribers: [],
     migrations: [],
 });
