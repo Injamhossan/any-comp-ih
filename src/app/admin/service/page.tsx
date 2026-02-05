@@ -11,6 +11,7 @@ import stcImage from "@/assets/image/STC.png";
 import maicsaImage from "@/assets/certification/Maicsa.png";
 import ssmImage from "@/assets/certification/SSM.png";
 import image6 from "@/assets/certification/image 6.png";
+import { useServiceStore } from "@/store/useServiceStore";
 
 const ASSETS = [
     { name: "Default", src: stcImage },
@@ -37,21 +38,27 @@ function CreateSpecialistContent() {
     const searchParams = useSearchParams();
     const editId = searchParams.get('id');
 
-    // Form State
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [basePrice, setBasePrice] = useState<number | string>("");
-    const [duration, setDuration] = useState<number | string>(1);
+    // Form State from Zustand Store
+    const {
+        title, setTitle,
+        description, setDescription,
+        basePrice, setBasePrice,
+        duration, setDuration,
+        secretaryName, setSecretaryName,
+        secretaryCompany, setSecretaryCompany,
+        avatar, setAvatar,
+        companyLogo, setCompanyLogo,
+        certifications, setCertifications,
+        images, setImages,
+        offerings, setOfferings,
+        isSubmitting, setIsSubmitting,
+        reset, // We will use this to reset on unmount
+        updateImage, toggleCertification, addOffering, removeOffering
+    } = useServiceStore();
 
-    // Secretary Profile State
-    const [secretaryName, setSecretaryName] = useState("");
-    const [secretaryCompany, setSecretaryCompany] = useState("");
-    const [avatar, setAvatar] = useState<UploadedImage | null>(null);
-    const [certifications, setCertifications] = useState<string[]>([]);
+    // Local UI State (Upload loading, Modals, Drag & Drop)
     const [isAvatarUploading, setIsAvatarUploading] = useState(false);
-
-    // Additional Offerings State
-    const [offerings, setOfferings] = useState<Offering[]>([]);
+    const [isLogoUploading, setIsLogoUploading] = useState(false);
 
     interface MasterOffering {
         id: string;
@@ -66,14 +73,13 @@ function CreateSpecialistContent() {
     const processingFee = typeof basePrice === 'number' ? basePrice * 0.3 : 0;
     const total = typeof basePrice === 'number' ? basePrice + processingFee : 0;
 
-    const [images, setImages] = useState<(UploadedImage | null)[]>([null, null, null]);
     const [uploading, setUploading] = useState<boolean[]>([false, false, false]);
     const [dragActive, setDragActive] = useState<number | null>(null);
 
     const [showAssetModal, setShowAssetModal] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
     const CERTIFICATION_OPTIONS = ["MAICSA", "SSM", "LS", "MIA"];
 
@@ -93,6 +99,11 @@ function CreateSpecialistContent() {
         }
     };
 
+    // Reset store on unmount
+    React.useEffect(() => {
+        return () => reset();
+    }, [reset]);
+
     // Fetch Master Offerings
     React.useEffect(() => {
         fetch('/api/service-offerings')
@@ -105,7 +116,7 @@ function CreateSpecialistContent() {
             .catch(err => console.error("Failed to fetch master offerings", err));
     }, []);
 
-    // Load data for edit
+    // Load data for edit OR pre-fill for new
     React.useEffect(() => {
         if (editId) {
             fetch(`/api/specialists/${editId}`)
@@ -123,6 +134,9 @@ function CreateSpecialistContent() {
 
                         if (s.avatar_url) {
                             setAvatar({ url: s.avatar_url, file_name: "avatar", mime_type: "image/jpeg", file_size: 0 });
+                        }
+                        if (s.secretary_company_logo) {
+                            setCompanyLogo({ url: s.secretary_company_logo, file_name: "logo", mime_type: "image/png", file_size: 0 });
                         }
 
                         // Map existing media
@@ -157,6 +171,30 @@ function CreateSpecialistContent() {
                 .catch(err => {
                     console.error("Failed to fetch specialist", err);
                 });
+        } else {
+            // Pre-fill for NEW service using Admin profile
+            // Try to fetch session to get email? For now, we try to guess or use a standard endpoint if available.
+            // Since this is client component, we should really use useSession, but we can also just fetch /api/auth/session or assume backend handler.
+            // Let's try fetching the profile if we can.
+            fetch('/api/auth/session').then(res => res.json()).then(session => {
+                if (session && session.user && session.user.email) {
+                     fetch(`/api/user/profile?email=${session.user.email}`)
+                        .then(res => res.json())
+                        .then(profile => {
+                            if (profile.success && profile.data) {
+                                const p = profile.data;
+                                setSecretaryName(p.name || "");
+                                setSecretaryCompany(p.company_name || "");
+                                if (p.image) {
+                                    setAvatar({ url: p.image, file_name: "profile", mime_type: "image/jpeg", file_size: 0 });
+                                }
+                                if (p.company_logo_url) {
+                                     setCompanyLogo({ url: p.company_logo_url, file_name: "logo", mime_type: "image/png", file_size: 0 });
+                                }
+                            }
+                        });
+                }
+            }).catch(() => {});
         }
     }, [editId]);
 
@@ -182,15 +220,11 @@ function CreateSpecialistContent() {
             const data = await res.json();
 
             if (data.success) {
-                setImages(prev => {
-                    const newImages = [...prev];
-                    newImages[index] = {
-                        url: data.url,
-                        file_name: data.filename,
-                        mime_type: data.mimeType,
-                        file_size: data.size
-                    };
-                    return newImages;
+                updateImage(index, {
+                    url: data.url,
+                    file_name: data.filename,
+                    mime_type: data.mimeType,
+                    file_size: data.size
                 });
             } else {
                 toast.error("Upload failed: " + (data.error || "Unknown error"));
@@ -242,15 +276,11 @@ function CreateSpecialistContent() {
                 const data = await res.json();
 
                 if (data.success) {
-                    setImages(prev => {
-                        const newImages = [...prev];
-                        newImages[index] = {
-                            url: data.url,
-                            file_name: data.filename,
-                            mime_type: data.mimeType,
-                            file_size: data.size
-                        };
-                        return newImages;
+                    updateImage(index, {
+                        url: data.url,
+                        file_name: data.filename,
+                        mime_type: data.mimeType,
+                        file_size: data.size
                     });
                 }
             } catch (error) {
@@ -287,21 +317,13 @@ function CreateSpecialistContent() {
                 setAvatar(newImage);
             } else {
                 // Main Images
-                setImages(prev => {
-                    const newImages = [...prev];
-                    newImages[activeImageIndex] = newImage;
-                    return newImages;
-                });
+                updateImage(activeImageIndex, newImage);
             }
         }
         setShowAssetModal(false);
     };
 
-    const toggleCertification = (cert: string) => {
-        setCertifications(prev =>
-            prev.includes(cert) ? prev.filter(c => c !== cert) : [...prev, cert]
-        );
-    };
+
 
     const submitToBackend = async (isDraft: boolean) => {
         setIsSubmitting(true);
@@ -347,6 +369,7 @@ function CreateSpecialistContent() {
                 secretary_name: secretaryName,
                 secretary_company: secretaryCompany,
                 avatar_url: avatar?.url || "",
+                secretary_company_logo: companyLogo?.url || "",
                 certifications: certifications,
             };
 
@@ -385,7 +408,7 @@ function CreateSpecialistContent() {
 
             await res.json();
             toast.success("Specialist saved successfully!");
-            router.push('/admin');
+            router.push('/admin/specialists');
             router.refresh();
         } catch (error: any) {
             console.error(error);
@@ -691,12 +714,15 @@ function CreateSpecialistContent() {
                     {/* Secretary Profile Inputs (Added for completeness within the panel) */}
                     <div className="space-y-4 pt-4 border-t border-gray-100">
                         <h3 className="text-sm font-bold text-gray-900">Secretary Info</h3>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 items-start">
+                            {/* Avatar Upload */}
                             <div
                                 onClick={() => openAssetSelector(3)}
-                                className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-500 overflow-hidden relative"
+                                className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-500 overflow-hidden relative group"
+                                title="Secretary Avatar"
                             >
                                 {avatar ? <Image src={avatar.url} alt="av" fill className="object-cover" /> : <Upload className="h-4 w-4 text-gray-400" />}
+                                <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center text-[8px] text-white font-bold">Avatar</div>
                                 <input type="file" id="avatar-upload" className="hidden" accept="image/*"
                                     onChange={async (e) => {
                                         const file = e.target.files?.[0];
@@ -715,6 +741,35 @@ function CreateSpecialistContent() {
                                     }}
                                 />
                             </div>
+
+                            {/* Company Logo Upload */}
+                            <div
+                                onClick={() => document.getElementById('logo-upload')?.click()}
+                                className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-500 overflow-hidden relative group"
+                                title="Company Logo"
+                            >
+                                {companyLogo ? <Image src={companyLogo.url} alt="logo" fill className="object-cover" /> : <Building className="h-4 w-4 text-gray-400" />}
+                                <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center text-[8px] text-white font-bold">Logo</div>
+                                {isLogoUploading && <div className="absolute inset-0 bg-white/50 flex items-center justify-center"><div className="w-3 h-3 border-2 border-blue-500 rounded-full animate-spin border-t-transparent"></div></div>}
+                                <input type="file" id="logo-upload" className="hidden" accept="image/*"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setIsLogoUploading(true);
+                                            const formData = new FormData();
+                                            formData.append("file", file);
+                                            try {
+                                                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                                const data = await res.json();
+                                                if (data.success) {
+                                                    setCompanyLogo({ url: data.url, file_name: data.filename, mime_type: data.mimeType, file_size: data.size });
+                                                }
+                                            } finally { setIsLogoUploading(false); }
+                                        }
+                                    }}
+                                />
+                            </div>
+
                             <div className="flex-1 space-y-2">
                                 <input
                                     type="text"
@@ -751,7 +806,7 @@ function CreateSpecialistContent() {
                                                 <div
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setOfferings(prev => prev.filter((_, idx) => idx !== i));
+                                                        removeOffering(off.masterId);
                                                     }}
                                                     className="p-0.5 rounded-full hover:bg-gray-200 text-gray-500 hover:text-red-500 cursor-pointer"
                                                 >
@@ -777,9 +832,9 @@ function CreateSpecialistContent() {
                                                         key={item.id}
                                                         onClick={() => {
                                                             if (isSelected) {
-                                                                setOfferings(prev => prev.filter(o => o.masterId !== item.id));
+                                                                removeOffering(item.id);
                                                             } else {
-                                                                setOfferings(prev => [...prev, { masterId: item.id, title: item.title, price: 0 }]);
+                                                                addOffering({ masterId: item.id, title: item.title, price: 0 });
                                                             }
                                                         }}
                                                         className={`flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`}
@@ -810,18 +865,10 @@ function CreateSpecialistContent() {
                                 <ImageUploadBox
                                     image={images[0]?.url}
                                     onUpload={(url) => {
-                                        setImages(prev => {
-                                            const newImages = [...prev];
-                                            newImages[0] = { url, file_name: "image_1", mime_type: "image/jpeg", file_size: 0 };
-                                            return newImages;
-                                        });
+                                        updateImage(0, { url, file_name: "image_1", mime_type: "image/jpeg", file_size: 0 });
                                     }}
                                     onDelete={() => {
-                                        setImages(prev => {
-                                            const newImages = [...prev];
-                                            delete newImages[0];
-                                            return newImages;
-                                        });
+                                        updateImage(0, null);
                                     }}
                                     label="Main Service Image"
                                     height="h-full"
@@ -833,18 +880,10 @@ function CreateSpecialistContent() {
                                 <ImageUploadBox
                                     image={images[1]?.url}
                                     onUpload={(url) => {
-                                        setImages(prev => {
-                                            const newImages = [...prev];
-                                            newImages[1] = { url, file_name: "image_2", mime_type: "image/jpeg", file_size: 0 };
-                                            return newImages;
-                                        });
+                                        updateImage(1, { url, file_name: "image_2", mime_type: "image/jpeg", file_size: 0 });
                                     }}
                                     onDelete={() => {
-                                        setImages(prev => {
-                                            const newImages = [...prev];
-                                            delete newImages[1];
-                                            return newImages;
-                                        });
+                                        updateImage(1, null);
                                     }}
                                     label="Side View 1"
                                     height="h-full"
@@ -856,18 +895,10 @@ function CreateSpecialistContent() {
                                 <ImageUploadBox
                                     image={images[2]?.url}
                                     onUpload={(url) => {
-                                        setImages(prev => {
-                                            const newImages = [...prev];
-                                            newImages[2] = { url, file_name: "image_3", mime_type: "image/jpeg", file_size: 0 };
-                                            return newImages;
-                                        });
+                                        updateImage(2, { url, file_name: "image_3", mime_type: "image/jpeg", file_size: 0 });
                                     }}
                                     onDelete={() => {
-                                        setImages(prev => {
-                                            const newImages = [...prev];
-                                            delete newImages[2];
-                                            return newImages;
-                                        });
+                                        updateImage(2, null);
                                     }}
                                     label="Side View 2"
                                     height="h-full"
@@ -893,7 +924,9 @@ function CreateSpecialistContent() {
                                                     value={off.price}
                                                     onChange={(e) => {
                                                         const newPrice = e.target.value;
-                                                        setOfferings(prev => prev.map((o, idx) => idx === i ? { ...o, price: newPrice } : o));
+                                                        const newOfferings = [...offerings];
+                                                        newOfferings[i] = { ...newOfferings[i], price: newPrice };
+                                                        setOfferings(newOfferings);
                                                     }}
                                                     className="w-full pl-8 py-1 text-xs text-right text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-blue-500 focus:ring-0"
                                                     placeholder="0.00"
@@ -908,20 +941,20 @@ function CreateSpecialistContent() {
 
                 </div>
 
-                {/* Bottom Actions */}
-                <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4">
+                <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3 sticky bottom-0 z-10">
                     <button
-                        onClick={() => router.back()}
-                        className="flex-1 px-4 py-2 bg-white border border-gray-200 text-red-500 text-sm font-medium rounded-md hover:bg-gray-50"
+                        onClick={() => submitToBackend(true)}
+                        disabled={isSubmitting || uploading.some(u => u)}
+                        className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 disabled:opacity-50"
                     >
-                        Cancel
+                        {isSubmitting ? "Saving..." : "Save Draft"}
                     </button>
                     <button
                         onClick={() => submitToBackend(false)}
                         disabled={isSubmitting || uploading.some(u => u)}
                         className="flex-1 px-4 py-2 bg-[#0e2a6d] text-white text-sm font-medium rounded-md hover:bg-[#002f70] disabled:opacity-50"
                     >
-                        {isSubmitting ? "Saving..." : "Confirm"}
+                        {isSubmitting ? "Publishing..." : "Publish"}
                     </button>
                 </div>
             </div>

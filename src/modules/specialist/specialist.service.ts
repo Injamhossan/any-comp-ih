@@ -33,11 +33,13 @@ export const getAllSpecialists = async (includeUnverified = false): Promise<Spec
   
   if (!includeUnverified) {
       whereClause.verification_status = "VERIFIED";
+      whereClause.is_draft = false; // Strict check: Must not be draft
   }
 
   return await prisma.specialist.findMany({
     where: whereClause,
     include: { media: true },
+    orderBy: { created_at: 'desc' } // Good practice to order by newest
   });
 };
 

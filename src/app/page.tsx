@@ -18,6 +18,7 @@ interface Specialist {
   verification_status?: string; // Added field
   secretary_name?: string;
   secretary_company?: string;
+  secretary_company_logo?: string;
   avatar_url?: string;
   media?: { url: string }[];
   created_at?: string;
@@ -195,9 +196,11 @@ export default function Page() {
               >
                   <SpecialistCard
                     imageSrc={specialist.media?.[0]?.url} 
-                    avatarSrc={specialist.avatar_url || "/placeholder-avatar.png"}
+                    avatarSrc={specialist.avatar_url || "/placeholder-avatar.svg"}
+                    companyLogoSrc={specialist.secretary_company_logo}
                     name={specialist.secretary_name || "Company Secretary"}
                     role="Company Secretary"
+                    companyName={specialist.secretary_company}
                     description={specialist.title} // Displaying the Title as the main description text on card
                     price={`RM ${Number(specialist.final_price).toLocaleString()}`}
                   />

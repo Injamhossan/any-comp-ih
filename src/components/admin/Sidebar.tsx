@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
+  LayoutDashboard,
   Tag, 
   Users, 
   ClipboardList, 
@@ -16,12 +17,13 @@ import Image from "next/image";
 import STCLogo from "@/assets/image/STC.png";
   
 const navigation = [
-  { name: "Specialists", href: "/admin", icon: Tag },
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Specialists", href: "/admin/specialists", icon: Tag },
   { name: "Clients", href: "/admin/clients", icon: Users },
-  { name: "Service Orders", href: "/admin/orders", icon: ClipboardList },
-  { name: "eSignature", href: "/admin/esignature", icon: PenTool },
+  { name: "Orders", href: "/admin/orders", icon: ClipboardList },
+  { name: "E-Signatures", href: "/admin/esignature", icon: PenTool },
   { name: "Messages", href: "/admin/messages", icon: Mail },
-  { name: "Invoices & Receipts", href: "/admin/invoices", icon: Receipt },
+  { name: "Finance", href: "/admin/invoices", icon: Receipt },
 ];
 
 const secondaryNavigation = [

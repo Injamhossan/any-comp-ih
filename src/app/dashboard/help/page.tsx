@@ -1,9 +1,30 @@
 "use client";
 
-import { HelpCircle, Mail, MessageCircle, Phone } from "lucide-react";
-import React from "react";
+import { HelpCircle, Mail, MessageCircle, Phone, ChevronDown } from "lucide-react";
+import React, { useState } from "react";
 
 export default function HelpSupportPage() {
+  const faqs = [
+    {
+        question: "How do I register a new company?",
+        answer: "You can register a new company by clicking on the 'Create Service' button in the dashboard or by navigating to the 'Company Registration' service page. Follow the step-by-step form to submit your details."
+    },
+    {
+        question: "What documents are required for incorporation?",
+        answer: "Typically, you need identification documents (NRIC/Passport) for all directors and shareholders, proof of address, and signed consent forms. Our platform guides you through uploading these securely."
+    },
+    {
+        question: "How long does the process take?",
+        answer: "Once all documents are submitted and signed, the registration usually takes 3-5 business days, subject to SSM approval."
+    },
+    {
+        question: "How can I change my company secretary?",
+        answer: "You can request a change of company secretary through the 'Services' menu. Select 'Secretary Transfer' and provide the necessary details."
+    }
+  ];
+
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   return (
     <div className="space-y-6">
       <div>
@@ -40,23 +61,28 @@ export default function HelpSupportPage() {
           </div>
       </div>
 
-      {/* FAQ Section (Placeholder) */}
+      {/* FAQ Section */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-8">
           <div className="p-6 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900">Frequently Asked Questions</h3>
           </div>
-          <div className="p-6 space-y-4">
-              {[
-                  "How do I register a new company?",
-                  "What documents are required for incorporation?",
-                  "How long does the process take?",
-                  "How can I change my company secretary?"
-              ].map((q, i) => (
-                  <div key={i} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                      <button className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-700 hover:text-blue-600">
-                          <span>{q}</span>
-                          <HelpCircle className="h-4 w-4 text-gray-400" />
+          <div className="divide-y divide-gray-100">
+              {faqs.map((faq, i) => (
+                  <div key={i} className="p-6 bg-white hover:bg-gray-50 transition-colors">
+                      <button 
+                        onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                        className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none"
+                      >
+                          <span className="text-base">{faq.question}</span>
+                          <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${openFaq === i ? 'rotate-180 text-blue-600' : ''}`} />
                       </button>
+                      <div 
+                        className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaq === i ? 'max-h-40 mt-3 opacity-100' : 'max-h-0 opacity-0'}`}
+                      >
+                          <p className="text-sm text-gray-600 leading-relaxed pl-1 border-l-2 border-blue-100 ml-1">
+                              {faq.answer}
+                          </p>
+                      </div>
                   </div>
               ))}
           </div>

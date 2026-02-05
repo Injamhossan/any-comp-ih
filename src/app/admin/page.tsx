@@ -1,418 +1,229 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import {
-  Search,
-  Plus,
-  Download,
+import React, { useEffect, useState } from "react";
+import { 
+  Users, 
+  CreditCard, 
+  TrendingUp, 
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  Loader2,
+  Mail,
+  ShoppingBag,
   MoreVertical,
-  Edit,
-  Trash,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle, 
-  XCircle 
+  CheckCircle,
+  Clock
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-// Interface based on what we send to backend
-interface Specialist {
-  id: string;
-  title: string;
-  description: string;
-  final_price: number;
-  duration_days: number;
-  is_draft: boolean;
-  created_at: string;
-  verification_status?: string; // Added field
-  is_verified?: boolean;
-  purchases?: number;
-  media?: { url: string }[];
+interface DashboardData {
+  stats: {
+    totalClients: number;
+    totalRevenue: number;
+    activeOrders: number;
+    conversionRate: string;
+  };
+  recentActivity: Array<{
+    id: string;
+    senderName: string;
+    subject: string;
+    createdAt: string;
+    isRead: boolean;
+  }>;
+  recentOrders: Array<{
+    id: string;
+    customerName: string;
+    amount: string;
+    status: string;
+    createdAt: string;
+    specialist?: { title: string };
+  }>;
 }
 
-export default function AdminPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [openActionId, setOpenActionId] = useState<string | null>(null);
-  const [specialists, setSpecialists] = useState<Specialist[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function AdminDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const tabs = ["All", "Drafts", "Published", "Pending Approval"]; // Added Pending Approval tab
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
   useEffect(() => {
-    fetchSpecialists();
+    fetch('/api/admin/dashboard')
+      .then(res => res.json())
+      .then(resData => {
+        if (resData.success) {
+          setData(resData.data);
+        }
+      })
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
   }, []);
 
-  const fetchSpecialists = async () => {
-    try {
-      const res = await fetch('/api/specialists?mode=admin');
-      const data = await res.json();
-      if (data.success) {
-        setSpecialists(data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch specialists", error);
-    } finally {
-      setLoading(false);
-    }
+  const stats = data?.stats || {
+    totalClients: 0,
+    totalRevenue: 0,
+    activeOrders: 0,
+    conversionRate: "0%"
   };
 
-  const handleExport = () => {
-    if (specialists.length === 0) return;
-    
-    const headers = ["ID", "Title", "Price", "Duration", "Status", "Approval", "Created At"];
-    const rows = specialists.map(s => [
-      s.id,
-      `"${s.title.replace(/"/g, '""')}"`,
-      s.final_price,
-      s.duration_days,
-      s.is_draft ? "Draft" : "Published",
-      s.verification_status || "PENDING",
-      new Date(s.created_at).toLocaleDateString()
-    ]);
+  const statItems = [
+    {
+      name: "Total Clients",
+      value: stats.totalClients.toString(),
+      change: "+12.5%",
+      changeType: "positive",
+      icon: Users,
+      bgColor: "bg-blue-50",
+      textColor: "text-blue-600",
+      changeColor: "text-green-600"
+    },
+    {
+      name: "Total Revenue",
+      value: `RM ${Number(stats.totalRevenue).toLocaleString()}`,
+      change: "+15.2%",
+      changeType: "positive",
+      icon: TrendingUp,
+      bgColor: "bg-emerald-50",
+      textColor: "text-emerald-600",
+      changeColor: "text-green-600"
+    },
+    {
+      name: "Active Orders",
+      value: stats.activeOrders.toString(),
+      change: "-2.4%",
+      changeType: "negative",
+      icon: ShoppingBag,
+      bgColor: "bg-indigo-50",
+      textColor: "text-indigo-600",
+      changeColor: "text-red-600"
+    },
+    {
+      name: "Conversion Rate",
+      value: stats.conversionRate,
+      change: "+4.1%",
+      changeType: "positive",
+      icon: Activity,
+      bgColor: "bg-rose-50",
+      textColor: "text-rose-600",
+      changeColor: "text-green-600"
+    },
+  ];
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
-      + rows.map(e => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "specialists_export.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const deleteSpecialist = async (id: string) => {
-      if (!confirm("Are you sure you want to REJECT and DELETE this specialist? This cannot be undone.")) return;
-      
-      try {
-          const res = await fetch(`/api/specialists/${id}`, {
-              method: 'DELETE'
-          });
-          const data = await res.json();
-          if (data.success) {
-              setSpecialists(prev => prev.filter(s => s.id !== id));
-               setOpenActionId(null);
-          } else {
-              alert("Failed to delete: " + data.message);
-          }
-      } catch (error) {
-          console.error("Delete failed", error);
-      }
-  };
-
-  const approveSpecialist = async (id: string) => {
-      try {
-          const res = await fetch(`/api/specialists/${id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  verification_status: "VERIFIED", 
-                  is_verified: true,
-                  is_draft: false // Publish immediately upon approval
-              })
-          });
-          const data = await res.json();
-          if (data.success) {
-              setSpecialists(prev => prev.map(s => s.id === id ? { ...s, verification_status: "VERIFIED", is_verified: true, is_draft: false } : s));
-              setOpenActionId(null);
-          } else {
-              alert("Failed to approve: " + data.message);
-          }
-      } catch (error) {
-          console.error("Approve failed", error);
-      }
-  };
-
-  const toggleActionMenu = (id: string) => {
-    if (openActionId === id) {
-      setOpenActionId(null);
-    } else {
-      setOpenActionId(id);
-    }
-  };
-
-  const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(new Set(filteredSpecialists.map(s => s.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  const getApprovalStatus = (s: Specialist) => {
-    const status = s.verification_status || "PENDING";
-    if (status === "VERIFIED") return { label: "Approved", color: "bg-green-100 text-green-700" };
-    if (status === "REJECTED") return { label: "Rejected", color: "bg-red-100 text-red-700" };
-    return { label: "Under-Review", color: "bg-cyan-100 text-cyan-700" };
-  };
-
-  const filteredSpecialists = specialists.filter((specialist) => {
-    // 1. Filter by Tab
-    if (activeTab === "Published" && specialist.is_draft) return false;
-    if (activeTab === "Drafts" && !specialist.is_draft) return false;
-    if (activeTab === "Pending Approval") {
-       if (specialist.is_draft) return false;
-       const status = specialist.verification_status || "PENDING";
-       if (status === "VERIFIED" || status === "REJECTED") return false;
-    }
-
-    // 2. Filter by Search Query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return specialist.title.toLowerCase().includes(query);
-    }
-
-    return true;
-  });
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredSpecialists.length / itemsPerPage);
-  const paginatedSpecialists = filteredSpecialists.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  if (loading) {
+      return (
+          <div className="flex h-screen items-center justify-center bg-gray-50">
+              <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+          </div>
+      );
+  }
 
   return (
-    <div className="flex-1 bg-white min-h-screen font-sans text-gray-900 px-6 py-8">
-
-      {/* Header */}
+    <div className="p-8 bg-gray-50 min-h-screen font-sans">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Specialists</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Create and publish your services for Client&apos;s & Companies
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+        <p className="text-gray-500 mt-1">Welcome back, get an overview of your platform's performance.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
-              className={`
-                whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm
-                ${activeTab === tab
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}
-              `}
-            >
-              {tab}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-        <div className="relative w-full sm:w-72">
-          <input
-            type="text"
-            placeholder="Search Specialists"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full h-10 pl-3 pr-10 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-           <Link href="/admin/create-specialist">
-             <button className="w-full flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#0e2a6d] text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-900">
-               <Plus className="h-4 w-4" />
-               Create
-             </button>
-           </Link>
-           <button 
-             onClick={handleExport}
-             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#0F172A] text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800"
-           >
-             <Download className="h-4 w-4" />
-             Export
-           </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto min-h-[400px]">
-        {loading ? (
-           <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading specialists...</div>
-        ) : filteredSpecialists.length === 0 ? (
-           <div className="flex items-center justify-center h-full text-gray-500 text-sm py-10">No specialists found.</div>
-        ) : (
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="py-4 pl-4 pr-3 w-10">
-                 <input 
-                    type="checkbox" 
-                    onChange={toggleSelectAll}
-                    checked={paginatedSpecialists.length > 0 && paginatedSpecialists.every(s => selectedIds.has(s.id))}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                  />
-              </th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Service</th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Purchases</th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Duration</th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Approval Status</th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Publish Status</th>
-              <th className="py-4 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {paginatedSpecialists.map((specialist) => {
-               const status = getApprovalStatus(specialist);
-               return (
-              <tr key={specialist.id} className="hover:bg-gray-50/50">
-                <td className="py-4 pl-4 pr-3">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedIds.has(specialist.id)}
-                    onChange={() => toggleSelectOne(specialist.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                  />
-                </td>
-                <td className="py-4 px-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full overflow-hidden relative bg-gray-200 flex-shrink-0">
-                         {specialist.media?.[0]?.url ? (
-                           <Image
-                              src={specialist.media[0].url}
-                              alt={specialist.title}
-                              fill
-                              className="object-cover"
-                           />
-                         ) : (
-                           <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-500">Img</div>
-                         )}
-                    </div>
-                    <div className="min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]" title={specialist.title}>{specialist.title}</div>
-                        <div className="text-xs text-gray-500">Company Secretary</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-4 px-3 text-sm font-semibold text-gray-700 whitespace-nowrap">
-                  RM {Number(specialist.final_price || 0).toLocaleString()}
-                </td>
-                <td className="py-4 px-3 text-sm text-gray-600 text-center">
-                  {specialist.purchases ?? 0}
-                </td>
-                <td className="py-4 px-3 text-sm text-gray-600 text-center whitespace-nowrap">
-                  {specialist.duration_days} Days
-                </td>
-                <td className="py-4 px-3 text-center">
-                  <span
-                    className={`
-                      inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${status.color}
-                    `}
-                  >
-                    {status.label}
-                  </span>
-                </td>
-                <td className="py-4 px-3 text-center">
-                  <span
-                    className={`
-                      inline-flex items-center rounded px-2 py-0.5 text-xs font-medium text-white
-                      ${!specialist.is_draft ? "bg-green-500" : "bg-gray-400"}
-                    `}
-                  >
-                    {specialist.is_draft ? "Draft" : "Published"}
-                  </span>
-                </td>
-                <td className="py-4 px-3 text-center relative">
-                  <button
-                    onClick={() => toggleActionMenu(specialist.id)}
-                    className="p-1 hover:bg-gray-100 rounded-full"
-                  >
-                    <MoreVertical className="h-4 w-4 text-gray-400" />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {openActionId === specialist.id && (
-                    <div className="absolute right-8 top-1/2 -translate-y-1/2 w-40 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
-                      {(specialist.verification_status !== "VERIFIED") && (
-                         <button 
-                           onClick={() => approveSpecialist(specialist.id)}
-                           className="w-full px-4 py-3 text-left text-sm font-medium text-green-700 hover:bg-green-50 flex items-center gap-3"
-                         >
-                           <CheckCircle className="h-4 w-4 text-green-600" />
-                           Approve
-                         </button>
-                      )}
-                      
-                      <button 
-                        onClick={() => deleteSpecialist(specialist.id)}
-                        className="w-full px-4 py-3 text-left text-sm font-medium text-red-700 hover:bg-red-50 flex items-center gap-3"
-                      >
-                        <XCircle className="h-4 w-4 text-red-600" />
-                        Reject
-                      </button>
-
-                      <div className="border-t border-gray-100"></div>
-
-                      <button 
-                        onClick={() => router.push(`/admin/create-specialist?id=${specialist.id}`)}
-                        className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                      >
-                        <Edit className="h-4 w-4 text-gray-500" />
-                        Edit
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            )})}
-          </tbody>
-        </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {filteredSpecialists.length > 0 && (
-          <div className="flex items-center justify-center gap-2 mt-8 mb-8 text-sm text-gray-600">
-             <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="flex items-center hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-             </button>
-             <div className="flex items-center gap-1 mx-4">
-                 <span className="font-medium text-gray-900">Page {currentPage} of {totalPages}</span>
-             </div>
-             <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="flex items-center hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-             </button>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        {statItems.map((item) => (
+          <div
+            key={item.name}
+            className="relative overflow-hidden rounded-xl bg-white p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
+          >
+            <div className="flex items-center justify-between mb-4">
+               <div className={`rounded-xl p-3 ${item.bgColor}`}>
+                <item.icon className={`h-6 w-6 ${item.textColor}`} />
+               </div>
+               <span className={`inline-flex items-center text-xs font-semibold px-2 py-1 rounded-full bg-opacity-10 ${item.changeType === 'positive' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                 {item.changeType === 'positive' ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+                 {item.change}
+               </span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">{item.name}</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">{item.value}</h3>
+            </div>
           </div>
-      )}
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Recent Orders - Takes up 2 columns */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Recent Orders</h3>
+                <Link href="/admin/orders" className="text-sm text-blue-600 font-medium hover:underline">View All</Link>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-50/50 text-xs uppercase text-gray-500 font-semibold">
+                        <tr>
+                            <th className="px-6 py-4">Customer</th>
+                            <th className="px-6 py-4">Service</th>
+                            <th className="px-6 py-4 text-right">Amount</th>
+                            <th className="px-6 py-4 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm">
+                        {data?.recentOrders && data.recentOrders.length > 0 ? (
+                            data.recentOrders.map((order) => (
+                                <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-6 py-4 font-medium text-gray-900">{order.customerName || "Guest User"}</td>
+                                    <td className="px-6 py-4 text-gray-600 truncate max-w-[200px]">{order.specialist?.title || "Unknown Service"}</td>
+                                    <td className="px-6 py-4 text-right font-medium text-gray-900">RM {Number(order.amount).toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-center">
+                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize 
+                                            ${order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 
+                                              order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+                                              order.status === 'PAID' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                                            {order.status.toLowerCase()}
+                                         </span>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No recent orders found.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {/* Recent Activity (Messages) - Takes up 1 column */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Recent Messages</h3>
+                <Link href="/admin/messages" className="text-sm text-blue-600 font-medium hover:underline">View All</Link>
+            </div>
+            <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                {data?.recentActivity && data.recentActivity.length > 0 ? (
+                    data.recentActivity.map((msg) => (
+                        <div key={msg.id} className="p-5 hover:bg-gray-50 transition-colors group cursor-pointer">
+                            <div className="flex items-start gap-4">
+                                <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-sm">
+                                    {msg.senderName.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h4 className="text-sm font-semibold text-gray-900 truncate">{msg.senderName}</h4>
+                                        <span className="text-xs text-gray-400 whitespace-nowrap">{new Date(msg.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-800 truncate font-medium">{msg.subject}</p>
+                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 group-hover:text-blue-600">
+                                        {msg.isRead ? <CheckCircle className="h-3 w-3 text-green-500" /> : <Clock className="h-3 w-3 text-yellow-500" />}
+                                        {msg.isRead ? "Read" : "Unread"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="p-8 text-center text-gray-500">No recent messages.</div>
+                )}
+            </div>
+        </div>
+      </div>
     </div>
   );
 }

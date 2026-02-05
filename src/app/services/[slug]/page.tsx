@@ -175,8 +175,54 @@ export default function ServiceDetailsPage() {
                          </div>
 
                          <div className="prose max-w-none text-gray-600 leading-relaxed whitespace-pre-line">
-                             {service.description}
+                             {(() => {
+                                 // Clean description if it has the legacy JSON appended
+                                 const desc = service.description || "";
+                                 if (desc.includes("[Additional Offerings JSON]:")) {
+                                     return desc.split("[Additional Offerings JSON]:")[0].trim();
+                                 }
+                                 return desc;
+                             })()}
                          </div>
+
+                         {/* Additional Offerings Section (Rendered from DB or parsed from legacy description) */}
+                         {(() => {
+                             let offerings: any[] = service.additional_offerings || [];
+                             
+                             // Fallback: Try to parse from description if DB column is empty
+                             if ((!offerings || offerings.length === 0) && service.description?.includes("[Additional Offerings JSON]:")) {
+                                 try {
+                                     const jsonPart = service.description.split("[Additional Offerings JSON]:")[1];
+                                     offerings = JSON.parse(jsonPart);
+                                 } catch (e) {
+                                     console.error("Failed to parse offerings from description", e);
+                                 }
+                             }
+
+                             if (offerings && offerings.length > 0) {
+                                 return (
+                                     <div className="mt-8 pt-8 border-t border-gray-100">
+                                         <h3 className="text-lg font-bold text-gray-900 mb-4">Additional Offerings Included</h3>
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                             {offerings.map((offer: any, idx: number) => (
+                                                 <div key={idx} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                                     <div className="mt-1 h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 flex-shrink-0">
+                                                         <CheckCircle className="h-3 w-3" />
+                                                     </div>
+                                                     <div>
+                                                         <h4 className="text-sm font-bold text-gray-900">{offer.title}</h4>
+                                                         <p className="text-sm text-gray-500 font-medium mt-1">
+                                                             {offer.price > 0 ? `+ RM ${offer.price}` : 'Included (Free)'}
+                                                         </p>
+                                                     </div>
+                                                 </div>
+                                             ))}
+                                         </div>
+                                     </div>
+                                 );
+                             }
+                             return null;
+                         })()}
                      </div>
                  </div>
                  

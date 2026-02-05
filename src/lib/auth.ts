@@ -64,16 +64,12 @@ export const authOptions: NextAuthOptions = {
         return session;
     },
     async jwt({ token, user, trigger, session }) {
-        // Initial sign in
+        // Handle initial sign-in and session updates
         if (user) {
             token.id = user.id;
             token.role = user.role;
         }
 
-        // Refetch user on every request to ensure role/data is up to date (optional, but good for role changes)
-        // Or better yet, just trust the token expiry.
-        
-        // Support updating session client side
         if (trigger === "update" && session) {
             token = { ...token, ...session }
         }

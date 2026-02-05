@@ -137,14 +137,61 @@ export default function OrdersPage() {
                       
                       <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              <span className="text-xs text-gray-400">• {new Date(order.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          
+                          {/* Status Dropdown for Sales, Badge for Purchases */}
+                          {activeTab === 'sales' ? (
+                             <div className="relative inline-block text-left mt-1">
+                                <select
+                                   value={order.status}
+                                   onChange={async (e) => {
+                                       const newStatus = e.target.value;
+                                       try {
+                                           const res = await fetch(`/api/orders/${order.id}`, {
+                                               method: 'PATCH',
+                                               headers: { 'Content-Type': 'application/json' },
+                                               body: JSON.stringify({ status: newStatus })
+                                           });
+                                           if (res.ok) {
+                                               // Optimistic update locally
+                                               setSales(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus } : o));
+                                           } else {
+                                               alert("Failed to update status");
+                                           }
+                                       } catch (error) {
+                                           console.error("Failed to update status", error);
+                                           alert("Error updating status");
+                                       }
+                                   }}
+                                    className={`
+                                      appearance-none border-0 text-[10px] font-bold uppercase tracking-wider py-1 pl-2 pr-6 rounded cursor-pointer focus:ring-0 focus:outline-none
+                                      ${order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
+                                        order.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 
+                                        order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
+                                        'bg-gray-100 text-gray-700'}
+                                    `}
+                                    style={{ backgroundImage: 'none' }} // Hide default arrow to use custom one if needed, or just let browser handle it for simplicity
+                                >
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="PAID">PAID</option>
+                                    <option value="COMPLETED">COMPLETED</option>
+                                    <option value="CANCELLED">CANCELLED</option>
+                                </select>
+                                {/* Hacky pointer events none arrow if we wanted custom style, but native select is fine for now */}
+                             </div>
+                          ) : (
+                             /* Static Badge for Purchases */
+                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider w-fit inline-block ${
                                   order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
-                                  order.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                  order.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 
+                                  order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
                               }`}>
                                   {order.status}
                               </span>
-                              <span className="text-xs text-gray-400">• {new Date(order.createdAt).toLocaleDateString()}</span>
-                          </div>
+                          )}
+
                           
                           {activeTab === 'purchases' ? (
                               <>

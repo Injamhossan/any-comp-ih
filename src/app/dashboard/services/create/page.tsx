@@ -241,11 +241,10 @@ export default function CreateServicePage() {
             .replace(/(^-|-$)/g, '') + '-' + Date.now();
 
           
-          let finalDescription = formData.description || profileData?.description || "";
-          if (formData.offerings.length > 0) {
-             finalDescription += "\n\n[Additional Offerings JSON]: " + JSON.stringify(formData.offerings);
-          }
 
+          // Use description as is, without appending JSON
+          let finalDescription = formData.description || profileData?.description || "";
+          
           const payload = {
             title: formData.title,
             slug: slug,
@@ -263,7 +262,8 @@ export default function CreateServicePage() {
             total_number_of_ratings: 0,
             average_rating: 0,
             is_draft: false,
-            media_urls: images.filter(Boolean)
+            media_urls: images.filter(Boolean),
+            additional_offerings: formData.offerings // Save nicely to JSON column
             
           };
 

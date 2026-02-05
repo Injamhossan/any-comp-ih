@@ -63,6 +63,7 @@ model Specialist {
   // Secretary Profile
   secretary_name          String?
   secretary_company       String?
+  secretary_company_logo  String?
   secretary_email         String?
   avatar_url              String?
   certifications          String[]           @default([])
@@ -199,6 +200,9 @@ model User {
   sessions      Session[]
   registrations CompanyRegistration[]
   orders        Order[]
+  invoices      Invoice[]
+  notifications Notification[]
+  documents     Document[]
 
   @@map("users")
 }
@@ -214,7 +218,7 @@ model VerificationToken {
 
 model CompanyRegistration {
     id String @id @default(uuid()) @db.Uuid
-    userId String @db.Uuid
+    userId String @db.Uuid @unique
     
     companyName String @map("company_name")
     companyType String? @map("company_type")
@@ -265,7 +269,90 @@ model Order {
 
   user User? @relation(fields: [userId], references: [id])
   specialist Specialist @relation(fields: [specialistId], references: [id])
+  invoice Invoice?
 
   @@map("orders")
 }
 
+model Invoice {
+  id String @id @default(uuid()) @db.Uuid
+  userId String? @db.Uuid
+  orderId String? @unique @db.Uuid
+  invoiceNumber String @unique // e.g., INV-001
+  
+  amount Decimal @db.Decimal(10, 2)
+  status InvoiceStatus @default(PENDING)
+  
+  issuedDate DateTime @default(now()) @map("issued_date")
+  dueDate DateTime? @map("due_date")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Message {
+  id String @id @default(uuid()) @db.Uuid
+  senderName String
+  senderEmail String
+  subject String
+  content String @db.Text
+  isRead Boolean @default(false)
+  isArchived Boolean @default(false)
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@map("messages")
+}
+
+model Document {
+  id String @id @default(uuid()) @db.Uuid
+  userId String? @db.Uuid
+  title String
+  url String
+  
+  status DocumentStatus @default(PENDING)
+  
+  sentDate DateTime @default(now()) @map("sent_date")
+  signatoriesCount Int @default(0)
+  signedCount Int @default(0)
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("documents")
+}
+
+enum DocumentStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  REJECTED
+}
+
+model Notification {
+    id String @id @default(uuid()) @db.Uuid
+    userId String @db.Uuid
+    title String
+    message String?
+    isRead Boolean @default(false)
+    
+    createdAt DateTime @default(now()) @map("created_at")
+    
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    
+    @@map("notifications")
+}

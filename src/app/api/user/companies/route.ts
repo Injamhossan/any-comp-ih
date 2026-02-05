@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get('email');
-    const name = searchParams.get('name'); // Optional, to update name
+    const name = searchParams.get('name');  
 
     if (!email) {
       return NextResponse.json({ success: false, message: "Email required" }, { status: 400 });
@@ -53,18 +53,23 @@ export async function POST(req: NextRequest) {
 
       const db = prisma as any;
       
-      // Ensure user exists
+            // Ensure user exists and verify single registration
       let user = await db.user.findUnique({ 
           where: { email },
           include: { registrations: true }
       });
+      
       if (!user) {
           user = await db.user.create({ data: { email, role: 'USER' } });
       }
 
-      // Check if user already has a registration
+      // Check if user already has ANY registration (PENDING, APPROVED, etc.)
+      // We explicitly deny multiple registrations per user.
       if (user.registrations && user.registrations.length > 0) {
-          return NextResponse.json({ success: false, message: "You have already registered a company." }, { status: 400 });
+          return NextResponse.json({ 
+              success: false, 
+              message: "Limit Reached: You have already registered a company. Only one company registration is allowed per user." 
+          }, { status: 400 });
       }
 
       const registration = await db.companyRegistration.create({

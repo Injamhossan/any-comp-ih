@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
+// Handle user registration securely
 export async function POST(req: Request) {
   try {
     const { name, email, password } = await req.json();
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
         name,
         email,
         password: hashedPassword,
-        role: "USER" // Default role
+        role: "USER"
       }
     });
 

@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Loader2, Search, Building2, User, MoreHorizontal, CheckCircle, XCircle, Clock, Eye, X } from "lucide-react";
 import Image from "next/image";
+import { useClientStore } from "@/store/useClientStore";
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { 
+    clients, setClients, 
+    loading, setLoading,
+    searchTerm, setSearchTerm,
+    selectedClient, setSelectedClient,
+    isModalOpen, openModal, closeModal,
+    updateClientStatus
+  } = useClientStore();
 
   useEffect(() => {
     fetch('/api/admin/clients')
@@ -25,7 +29,7 @@ export default function ClientsPage() {
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
       // Optimistic update
-      setClients(clients.map(c => c.id === id ? { ...c, status: newStatus } : c));
+      updateClientStatus(id, newStatus);
 
       try {
           const res = await fetch('/api/admin/clients', {
@@ -149,7 +153,7 @@ export default function ClientsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
                         <button 
-                            onClick={() => { setSelectedClient(client); setIsModalOpen(true); }}
+                            onClick={() => openModal(client)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-[#0e2a6d] rounded-md text-xs font-bold hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100" 
                             title="View Details"
                         >
@@ -191,7 +195,7 @@ export default function ClientsPage() {
                           </div>
                       </div>
                       <button 
-                        onClick={() => setIsModalOpen(false)}
+                        onClick={closeModal}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                       >
                           <X className="h-5 w-5 text-gray-400" />
@@ -244,7 +248,7 @@ export default function ClientsPage() {
 
                   <div className="p-6 bg-gray-50 flex justify-end gap-3">
                       <button 
-                        onClick={() => setIsModalOpen(false)}
+                        onClick={closeModal}
                         className="px-6 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
                       >
                           Close
@@ -252,9 +256,9 @@ export default function ClientsPage() {
                       <button 
                         className="px-6 py-2 bg-[#0e2a6d] text-white rounded-lg text-sm font-bold hover:bg-[#002f70] transition-colors shadow-lg shadow-indigo-100"
                         onClick={() => {
-                            // Link to full management or actions if needed
-                            setIsModalOpen(false);
-                            alert("More actions can be implemented here.");
+                            // Redirect to messages page to chat with or manage client
+                            // In a real app, this might open a specific management workflow
+                            window.location.href = `/admin/messages?client=${selectedClient.id}`;
                         }}
                       >
                           Manage Request
