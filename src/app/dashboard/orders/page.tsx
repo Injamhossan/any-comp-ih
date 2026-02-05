@@ -6,31 +6,35 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
+import { useOrderStore } from "@/store/useOrderStore";
 
 export default function OrdersPage() {
   const { user } = useAuth();
-  const [purchases, setPurchases] = useState<any[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
+  
+  // Use Zustand Store
+  const { 
+    purchases, 
+    sales, 
+    loading, 
+    fetchPurchases, 
+    fetchSales, 
+    updateSaleStatus 
+  } = useOrderStore();
+
   const [isSpecialist, setIsSpecialist] = useState(false);
   const [activeTab, setActiveTab] = useState<'purchases' | 'sales'>('purchases');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
+    async function initData() {
         if (!user?.email) return;
 
         try {
-            setLoading(true);
-
             // 1. Get User Profile for Purchases
             const profileRes = await fetch(`/api/user/profile?email=${encodeURIComponent(user.email)}`);
             const profileData = await profileRes.json();
             
             if (profileData.success && profileData.data) {
-                // Fetch Purchases
-                const pRes = await fetch(`/api/orders?userId=${profileData.data.id}`);
-                const pData = await pRes.json();
-                if (pData.success) setPurchases(pData.data);
+                await fetchPurchases(profileData.data.id);
             }
 
             // 2. Get Specialist Profile for Sales
@@ -40,24 +44,18 @@ export default function OrdersPage() {
             if (specData.success && specData.data.length > 0) {
                 const specialist = specData.data[0];
                 setIsSpecialist(true);
-                
-                // Fetch Sales
-                const sRes = await fetch(`/api/orders?specialistId=${specialist.id}`);
-                const sData = await sRes.json();
-                if (sData.success) setSales(sData.data);
+                await fetchSales(specialist.id);
             }
 
         } catch (e) {
             console.error("Failed to load orders", e);
-        } finally {
-            setLoading(false);
         }
     }
 
-    fetchData();
-  }, [user]);
+    initData();
+  }, [user, fetchPurchases, fetchSales]);
 
-  if (loading) {
+  if (loading && purchases.length === 0 && sales.length === 0) {
       return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-blue-900 h-8 w-8"/></div>;
   }
 
@@ -137,7 +135,7 @@ export default function OrdersPage() {
                       
                       <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-gray-400">• {new Date(order.createdAt).toLocaleDateString()}</span>
+                              <span className="text-xs text-gray-400">• {new Date(order.created_at || order.createdAt || "").toLocaleDateString()}</span>
                           </div>
                           
                           {/* Status Dropdown for Sales, Badge for Purchases */}
@@ -147,22 +145,8 @@ export default function OrdersPage() {
                                    value={order.status}
                                    onChange={async (e) => {
                                        const newStatus = e.target.value;
-                                       try {
-                                           const res = await fetch(`/api/orders/${order.id}`, {
-                                               method: 'PATCH',
-                                               headers: { 'Content-Type': 'application/json' },
-                                               body: JSON.stringify({ status: newStatus })
-                                           });
-                                           if (res.ok) {
-                                               // Optimistic update locally
-                                               setSales(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus } : o));
-                                           } else {
-                                               alert("Failed to update status");
-                                           }
-                                       } catch (error) {
-                                           console.error("Failed to update status", error);
-                                           alert("Error updating status");
-                                       }
+                                       const success = await updateSaleStatus(order.id, newStatus);
+                                       if (!success) alert("Failed to update status");
                                    }}
                                     className={`
                                       appearance-none border-0 text-[10px] font-bold uppercase tracking-wider py-1 pl-2 pr-6 rounded cursor-pointer focus:ring-0 focus:outline-none
@@ -201,14 +185,14 @@ export default function OrdersPage() {
                           ) : (
                              <>
                                 <h3 className="text-base font-bold text-gray-900 truncate">
-                                    {order.customerName || order.user?.name || "Guest User"}
+                                    {order.customer_name || order.user?.name || "Guest User"}
                                 </h3>
                                 <div className="text-sm text-gray-500 flex flex-col gap-0.5">
-                                    {order.customerEmail || order.user?.email ? (
-                                        <span>📧 {order.customerEmail || order.user?.email}</span>
+                                    {order.customer_email || order.user?.email ? (
+                                        <span>📧 {order.customer_email || order.user?.email}</span>
                                     ) : null}
-                                    {order.customerPhone ? (
-                                        <span>📞 {order.customerPhone}</span>
+                                    {order.customer_phone ? (
+                                        <span>📞 {order.customer_phone}</span>
                                     ) : null}
                                 </div>
                                 {order.requirements && (

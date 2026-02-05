@@ -68,8 +68,11 @@ export default function DashboardPage() {
                            {service.title}
                        </h3>
                        <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
-                           <span className="text-lg font-bold text-gray-900">RM {service.base_price.toLocaleString()}</span>
-                           <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 group-hover:bg-[#0e2a6d] group-hover:text-white transition-colors">Edit</span>
+                           <div className="flex flex-col">
+                               <span className="text-lg font-bold text-gray-900">RM {service.base_price.toLocaleString()}</span>
+                               <span className="text-xs text-gray-500 font-medium mt-0.5">{service.purchase_count || 0} Sales</span>
+                           </div>
+                           <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 group-hover:bg-[#0e2a6d] group-hover:text-white transition-colors h-fit">Edit</span>
                        </div>
                    </div>
                </div>

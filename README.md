@@ -13,6 +13,7 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
 ### **Frontend**
 *   **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 *   **Language**: [TypeScript](https://www.typescriptlang.org/) for strict type checking.
+*   **State Management**: [Zustand](https://github.com/pmndrs/zustand) for global client-state management (Orders, Services).
 *   **Styling**: 
     *   [Tailwind CSS v4](https://tailwindcss.com/) for utility-first styling.
     *   [Shadcn UI](https://ui.shadcn.com/) for accessible, reusable component primitives (Radix UI based).
@@ -22,8 +23,8 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
 ### **Backend**
 *   **API**: Next.js API Routes (App Router).
 *   **Database**: [PostgreSQL](https://www.postgresql.org/) hosted on **Neon Tech** (Serverless Postgres).
-*   **ORM**: [Prisma](https://www.prisma.io/) for type-safe database access and schema management.
-*   **Authentication**: [NextAuth.js](https://next-auth.js.org/) (Auth.js) with Google & Credentials providers.
+*   **ORM**: [TypeORM](https://typeorm.io/) for advanced relationship management and database interaction (Recently migrated from Prisma).
+*   **Authentication**: [NextAuth.js](https://next-auth.js.org/) (Auth.js) / Custom Auth implementation.
 *   **Storage**: **Local Storage** for storing images (Profile photos, Service images, etc.) within the `public/uploads` directory.
 
 ---
@@ -33,25 +34,33 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
 ### 1. **Service Marketplace**
 *   **Browse Services**: Users can view verified specialists and their service offerings (e.g., "Sdn Bhd Registration").
 *   **Service Details**: Comprehensive pages showing price breakdowns, secretary profiles, certifications (MAICSA, SSM), and completion time.
-*   **Dynamic Pricing**: Calculates Base Price + Platform Fees automatically.
+*   **Dynamic Pricing**: Calculates Base Price + Platform Fees automatically (Base Price + 30%).
+*   **Additional Offerings**: Integrated logic to fetch and display optional service add-ons.
 
-### 2. **Authentication & Identity**
-*   **NextAuth Implementation**: Secure JWT-based session management.
-*   **Google Login**: Seamless OAuth integration for users.
-*   **Credentials Login**: Email/Password authentication using `bcrypt` for hashing.
-*   **Role-Based Access**: Specialized views for Users, Specialists, and Admins.
+### 2. **Ordering & Transactions**
+*   **Guest Checkout**: Allows users to purchase services without creating an account by providing Name, Email, and Phone.
+*   **Registered Purchase**: Logged-in users can buy services linked directly to their profile.
+*   **Order Workflow**:
+    1.  User selects a service.
+    2.  Fills in details (or auto-filled for logged-in users).
+    3.  Confirm Order.
+    4.  Order is created (`PENDING`) and `purchase_count` for the Specialist is incremented.
 
-### 3. **Dashboards**
-*   **Customer Dashboard**: View "My Companies", track order status, and manage profile settings.
-*   **Admin Panel**: 
-    *   **Verify Specialists**: Approve/Reject company registrations.
-    *   **Client Management**: Professional table view with detailed registration modals.
-    *   **Master Data**: Manage global service offerings and configurations.
+### 3. **Admin Dashboard**
+*   **Order Management**: 
+    *   View all orders (Guest & Registered).
+    *   Filter orders by ID, Customer Name, or Email.
+    *   **Status Update**: Admins can update order status (PENDING -> PAID -> COMPLETED) directly from the table.
+    *   Detailed view of customer info (Name, Email, Phone).
+*   **Service Management**:
+    *   Create, Edit, and Publish Specialist Services.
+    *   Approve/Reject services.
+    *   Manage rich media (Images) and Certifications.
+*   **Sales Tracking**: Real-time sales counts displayed on service cards.
 
-### 4. **Modern UI/UX**
-*   **Responsive Design**: Mobile-first approach.
-*   **Real-time Feedback**: Instant validation and success/error toasts using *Sonner*.
-*   **Local Media Handling**: Efficient local file uploads with automatic directory management.
+### 4. **User Dashboard**
+*   **My Orders**: Users can see their own purchase history.
+*   **Profile Management**: Update user details.
 
 ---
 
@@ -59,37 +68,58 @@ We use a robust, type-safed, and modern stack to ensure performance, scalability
 
 ```bash
 .
-├── prisma/             # Database Schema & Seeds
-│   ├── schema.prisma   # Main DB Schema
-│   └── seed.ts         # Initial data seeding script
 ├── src/
 │   ├── app/            # Next.js App Router (Pages & API)
-│   │   ├── admin/      # Admin Panel Pages
-│   │   ├── dashboard/  # User/Company Dashboard Pages
-│   │   ├── services/   # Public Service Marketplace Pages
-│   │   └── api/        # Backend API Routes
-│   ├── components/     # Reusable UI Components
-│   │   ├── ui/         # Shadcn UI Primitives (Button, Input, etc.)
+│   │   ├── admin/      # Admin Panel (Orders, Specialists, Clients)
+│   │   ├── dashboard/  # User Dashboard
+│   │   ├── services/   # Public Service Pages ([slug])
+│   │   └── api/        # Backend API Routes (RESTful endpoints)
+│   ├── entities/       # TypeORM Entities (DB Schema Definitions)
+│   ├── modules/        # Domain Logic (Controllers, Services)
+│   │   ├── order/      # Order creation, fetching, updating logic
+│   │   ├── specialist/ # Service management logic
 │   │   └── ...
-│   ├── context/        # React Context (AuthContext)
-│   ├── lib/            # Utility libraries (DB client, Auth options)
-│   ├── modules/        # Domain-specific logic (Controllers & Services)
-│   └── types/          # Global TypeScript definitions
-├── public/
-│   └── uploads/        # Local file storage for uploaded images
+│   ├── store/          # Zustand Stores (useOrderStore, useServiceStore)
+│   ├── lib/            # Utilities (Data Source, Auth)
+│   └── components/     # UI Components
+├── public/             # Static Assets & Uploads
 └── ...
 ```
 
 ---
 
-## 🛠️ Getting Started
+## 🚀 How It Works
 
-Follow these steps to set up the project locally.
+### **1. The Order Flow**
+1.  **Selection**: A user navigates to `/services/[slug]`.
+2.  **Interaction**: They click "Purchase".
+    *   **If Guest**: A form appears asking for Name, Email, Phone, and Requirements.
+    *   **If Logged In**: The system uses their Profile ID.
+3.  **Processing**: 
+    *   The frontend calls `POST /api/orders`.
+    *   The backend (OrderController) verifies metadata.
+    *   An `Order` record is created in the database.
+    *   The `Specialist` entity's `purchase_count` is incremented.
+4.  **Confirmation**: The user receives a success toast/message.
+
+### **2. Admin Management**
+1.  **View**: Admin logs in and goes to `/admin/orders`.
+2.  **Fetch**: The page calls `GET /api/admin/orders`.
+3.  **Update**: 
+    *   Admin sees a "PENDING" order.
+    *   Changes dropdown to "PAID".
+    *   Frontend calls `PATCH /api/orders/[id]` with new status.
+    *   Backend updates the database record.
+    *   UI updates optimistically to reflect the change immediately.
+
+---
+
+## 🛠️ Getting Started
 
 ### Prerequisites
 *   Node.js (v18+)
 *   pnpm (Recommended) or npm
-*   A Neon Tech PostgreSQL Database URL
+*   A PostgreSQL Database
 
 ### Installation
 
@@ -107,28 +137,15 @@ Follow these steps to set up the project locally.
 3.  **Environment Setup:**
     Create a `.env.local` file in the root directory:
     ```env
-    # Database (Neon Tech)
-    DATABASE_URL="postgresql://neondb_owner:..."
-
-    # Next Auth
-    NEXTAUTH_URL="http://localhost:3000"
+    DATABASE_URL="postgresql://user:password@localhost:5432/any_comp_db"
     NEXTAUTH_SECRET="your-secret-here"
-
-    # Google Auth (Optional for Dev)
-    GOOGLE_CLIENT_ID="..."
-    GOOGLE_CLIENT_SECRET="..."
+    NEXTAUTH_URL="http://localhost:3000"
     ```
 
-4.  **Database Setup:**
-    Sync your Prisma schema with the database:
+4.  **Database Migration (TypeORM):**
+    Ensure your database is running and run the sync script (or rely on `synchronize: true` in dev).
     ```bash
-    npx prisma generate
-    npx prisma db push
-    ```
-
-    *(Optional) Seed initial data:*
-    ```bash
-    npx prisma db seed
+    npm run typeorm schema:sync # if script exists, otherwise run dev
     ```
 
 5.  **Run Development Server:**
@@ -143,19 +160,8 @@ Follow these steps to set up the project locally.
 
 *   `pnpm dev`: Start dev server.
 *   `pnpm build`: Build the application for production.
-*   `npx prisma studio`: Open GUI to manage database records.
-*   `npx prisma db push`: Sync schema changes to DB.
-*   `npx prisma generate`: Update TypeScript client after schema changes.
+*   `pnpm start`: Run the production build.
 
 ---
 
-## 🔒 Security & Best Practices
-
-*   **JWT Authentication**: Securely signed tokens with expiration.
-*   **Type Safety**: Complete TypeScript implementation.
-*   **Server-Side Logic**: Business logic is encapsulated in controllers for separation of concerns.
-*   **Encryption**: User passwords are saved as modern `bcrypt` hashes.
-
----
-
-*Verified & Updated: 2026-02-04*
+*Updated: 2026-02-06*

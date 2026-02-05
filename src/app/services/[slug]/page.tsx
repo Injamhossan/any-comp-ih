@@ -229,18 +229,24 @@ export default function ServiceDetailsPage() {
                  {/* Right Sidebar (Purchase Card) */}
                  <div className="lg:col-span-4">
                      <div className="sticky top-24 bg-white border border-gray-200 rounded-2xl p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                         <div className="flex flex-col gap-1 mb-6">
-                             <span className="text-sm font-semibold text-gray-500">Total Price</span>
-                             <div className="flex items-baseline gap-1">
-                                <span className="text-4xl font-bold text-gray-900">RM {Number(service.final_price || service.base_price).toLocaleString()}</span>
+                         <div className="mb-8">
+                             <div className="grid grid-cols-3 gap-2 text-center border-b border-gray-100 pb-6">
+                                 <div className="flex flex-col items-center">
+                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price</span>
+                                     <span className="text-xl font-bold text-gray-900">RM {Number(service.final_price || service.base_price).toLocaleString()}</span>
+                                 </div>
+                                 <div className="flex flex-col items-center border-l border-gray-100">
+                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Purchases</span>
+                                     <span className="text-xl font-bold text-gray-900">{service.purchase_count || 0}</span>
+                                 </div>
+                                 <div className="flex flex-col items-center border-l border-gray-100">
+                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Duration</span>
+                                     <span className="text-xl font-bold text-gray-900">{service.duration_days} Days</span>
+                                 </div>
                              </div>
                          </div>
                          
-                         <div className="space-y-4 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                             <div className="flex items-center gap-3 text-sm text-gray-700 font-medium">
-                                 <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                                 <span>{service.duration_days} Days Delivery Time</span>
-                             </div>
+                         <div className="space-y-3 mb-8">
                              <div className="flex items-center gap-3 text-sm text-gray-700 font-medium">
                                  <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
                                  <span>Verified Specialist</span>

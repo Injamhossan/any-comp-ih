@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { getDataSource } from '@/lib/data-source';
+import { Specialist } from '@/entities/Specialist';
 
 export async function GET() {
   try {
-    // Test the database connection
-    const result: any = await prisma.$queryRaw`SELECT NOW()`;
+    const dataSource = await getDataSource();
+    const result: any = await dataSource.query('SELECT NOW()');
     
-      
-    const count = await prisma.specialist.count();
+    const count = await dataSource.getRepository(Specialist).count();
     
     return NextResponse.json({ 
       status: 'success', 
@@ -19,8 +19,7 @@ export async function GET() {
     console.error('Database connection error:', error);
     return NextResponse.json({ 
       status: 'error', 
-      message: error.message,
-      stack: error.stack 
+      message: error.message
     }, { status: 500 });
   }
 }

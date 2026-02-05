@@ -5,9 +5,13 @@ import { createSpecialist, getAllSpecialists, getSpecialistById, updateSpecialis
 export const create = async (req: NextRequest) => {
   try {
     const body = await req.json();
+    console.log(`[Backend-Create] Received Payload:`, JSON.stringify(body).slice(0, 500) + "...");
+    console.log(`[Backend-Create] Payload Length: ${JSON.stringify(body).length}`);
+    
     const specialist = await createSpecialist(body);
     return NextResponse.json({ success: true, data: specialist }, { status: 201 });
   } catch (error: any) {
+    console.error(`[Backend-Create] Error:`, error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 };
@@ -47,6 +51,7 @@ export const index = async (req: NextRequest) => {
     const specialists = await getAllSpecialists(mode === 'admin');
     return NextResponse.json({ success: true, data: specialists }, { status: 200 });
   } catch (error: any) {
+    console.error("Fetch Specialists Error:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 };

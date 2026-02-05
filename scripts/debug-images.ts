@@ -1,8 +1,12 @@
-
-import { prisma } from "@/lib/db";
+import "dotenv/config";
+import { getDataSource } from "@/lib/data-source";
+import { Specialist } from "@/entities/Specialist";
 
 async function checkSpecialists() {
-  const specialists = await prisma.specialist.findMany({
+  const dataSource = await getDataSource();
+  const specialistRepository = dataSource.getRepository(Specialist);
+
+  const specialists = await specialistRepository.find({
     take: 5,
     select: {
       id: true,
@@ -21,5 +25,8 @@ checkSpecialists()
     process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect()
+    const dataSource = await getDataSource();
+    if (dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
   })

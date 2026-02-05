@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  poweredByHeader: false, // Security: Hide Next.js header
+  productionBrowserSourceMaps: false, // Security: Do not expose source code in production
   images: {
     remotePatterns: [
       {
@@ -18,8 +20,8 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
       },
       {
-         protocol: "https",
-         hostname: "firebasestorage.googleapis.com",
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
       }
     ],
   },

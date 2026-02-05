@@ -1,22 +1,14 @@
-
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getOrders } from "@/modules/order/order.service";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const orders = await prisma.order.findMany({
-      include: {
-        user: true,
-        specialist: true,
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-
+    const orders = await getOrders();
     return NextResponse.json({ success: true, data: orders });
-  } catch (error) {
-    console.error("Failed to fetch orders:", error);
-    return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Admin Order Fetch Error:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

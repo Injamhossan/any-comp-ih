@@ -3,13 +3,20 @@
 import React, { useEffect, useState } from "react";
 import { Loader2, Search, ShoppingBag, Eye, DollarSign, Calendar, User } from "lucide-react";
 
+import { toast } from "sonner";
+
 interface Order {
   id: string;
   status: string;
   amount: number;
-  createdAt: string;
+  created_at?: string;
+  createdAt?: string;
   customerName?: string;
   customerEmail?: string;
+  customerPhone?: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
   user?: {
     name: string;
     email: string;
@@ -24,7 +31,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
+  const fetchOrders = () => {
+    setLoading(true);
     fetch('/api/admin/orders')
       .then(res => res.json())
       .then(data => {
@@ -34,7 +42,36 @@ export default function OrdersPage() {
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchOrders();
   }, []);
+
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+
+    try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+           toast.success("Order status updated");
+        } else {
+           toast.error("Failed to update status");
+           fetchOrders(); // Revert on failure
+        }
+    } catch (error) {
+        console.error("Status update error", error);
+        toast.error("Error updating status");
+        fetchOrders();
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -46,11 +83,13 @@ export default function OrdersPage() {
     }
   };
 
-  const filteredOrders = orders.filter(o => 
-    o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (o.customerName && o.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (o.user?.name && o.user.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredOrders = orders.filter(o => {
+     const cName = o.customer_name || o.customerName || o.user?.name || "";
+     const cEmail = o.customer_email || o.customerEmail || o.user?.email || "";
+     return o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            cName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            cEmail.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <div className="flex-1 bg-white min-h-screen font-sans text-gray-900 px-6 py-8">
@@ -91,7 +130,7 @@ export default function OrdersPage() {
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    #{order.id.slice(0, 8).toUpperCase()}
+                    <span title={order.id}>#{order.id.slice(0, 8).toUpperCase()}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -100,33 +139,42 @@ export default function OrdersPage() {
                         </div>
                         <div className="ml-3">
                             <div className="text-sm font-medium text-gray-900">
-                                {order.customerName || order.user?.name || "Guest"}
+                                {order.customer_name || order.customerName || order.user?.name || "Guest"}
                             </div>
-                            <div className="text-xs text-gray-500">
-                                {order.customerEmail || order.user?.email || "No email"}
+                            <div className="text-xs text-gray-500 flex flex-col">
+                                <span>{order.customer_email || order.customerEmail || order.user?.email || "No email"}</span>
+                                <span>{order.customer_phone || order.customerPhone || ""}</span>
                             </div>
                         </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                     <span className="flex items-center gap-2">
-                        <ShoppingBag className="h-4 w-4 text-gray-400" />
-                        {order.specialist.title}
-                     </span>
+                     <div className="flex items-center gap-2 max-w-[200px]" title={order.specialist?.title}>
+                        <ShoppingBag className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <span className="truncate">{order.specialist?.title || "Unknown Service"}</span>
+                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span className="flex items-center gap-2">
                         <Calendar className="h-3 w-3" />
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {/* Fix Date Parsing */}
+                        {new Date(order.created_at || order.createdAt || "").toLocaleDateString()}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                     RM {Number(order.amount).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
+                    <select
+                        value={order.status}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer focus:ring-0 ${getStatusColor(order.status)}`}
+                    >
+                        <option value="PENDING">PENDING</option>
+                        <option value="PAID">PAID</option>
+                        <option value="COMPLETED">COMPLETED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-full">

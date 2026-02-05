@@ -28,7 +28,7 @@ interface Specialist {
   created_at: string;
   verification_status?: string; // Added field
   is_verified?: boolean;
-  purchases?: number;
+  purchase_count?: number;
   media?: { url: string }[];
 }
 
@@ -329,7 +329,7 @@ export default function ServicesPage() {
                   RM {Number(specialist.final_price || 0).toLocaleString()}
                 </td>
                 <td className="py-4 px-3 text-sm text-gray-600 text-center">
-                  {specialist.purchases ?? 0}
+                  {specialist.purchase_count ?? 0}
                 </td>
                 <td className="py-4 px-3 text-sm text-gray-600 text-center whitespace-nowrap">
                   {specialist.duration_days} Days

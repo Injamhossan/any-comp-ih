@@ -34,7 +34,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: session.user.role
   } : null;
 
-  // NextAuth uses session cookies primarily, but we can pass a value if API needs it.
   const token = null;
 
   const logout = async () => {

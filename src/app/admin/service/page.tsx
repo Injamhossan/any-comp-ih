@@ -45,6 +45,9 @@ function CreateSpecialistContent() {
         basePrice, setBasePrice,
         duration, setDuration,
         secretaryName, setSecretaryName,
+        secretaryEmail, setSecretaryEmail,
+        secretaryPhone, setSecretaryPhone,
+        secretaryBio, setSecretaryBio,
         secretaryCompany, setSecretaryCompany,
         avatar, setAvatar,
         companyLogo, setCompanyLogo,
@@ -71,7 +74,8 @@ function CreateSpecialistContent() {
 
     // ... (calculations remain same)
     const processingFee = typeof basePrice === 'number' ? basePrice * 0.3 : 0;
-    const total = typeof basePrice === 'number' ? basePrice + processingFee : 0;
+    const offeringsTotal = offerings.reduce((sum, off) => sum + (Number(off.price) || 0), 0);
+    const total = typeof basePrice === 'number' ? basePrice + processingFee + offeringsTotal : offeringsTotal;
 
     const [uploading, setUploading] = useState<boolean[]>([false, false, false]);
     const [dragActive, setDragActive] = useState<number | null>(null);
@@ -129,6 +133,9 @@ function CreateSpecialistContent() {
                         setBasePrice(Number(s.base_price) || 0);
                         setDuration(s.duration_days || 1);
                         setSecretaryName(s.secretary_name || "");
+                        setSecretaryEmail(s.secretary_email || "");
+                        setSecretaryPhone(s.secretary_phone || "");
+                        setSecretaryBio(s.secretary_bio || "");
                         setSecretaryCompany(s.secretary_company || "");
                         setCertifications(s.certifications || []);
 
@@ -184,6 +191,9 @@ function CreateSpecialistContent() {
                             if (profile.success && profile.data) {
                                 const p = profile.data;
                                 setSecretaryName(p.name || "");
+                                setSecretaryEmail(p.email || "");
+                                setSecretaryPhone(p.phone || "");
+                                setSecretaryBio(p.description || "");
                                 setSecretaryCompany(p.company_name || "");
                                 if (p.image) {
                                     setAvatar({ url: p.image, file_name: "profile", mime_type: "image/jpeg", file_size: 0 });
@@ -315,6 +325,9 @@ function CreateSpecialistContent() {
             if (activeImageIndex === 3) {
                 // Avatar
                 setAvatar(newImage);
+            } else if (activeImageIndex === 4) {
+                // Company Logo
+                setCompanyLogo(newImage);
             } else {
                 // Main Images
                 updateImage(activeImageIndex, newImage);
@@ -367,27 +380,16 @@ function CreateSpecialistContent() {
                 duration_days: cleanDuration,
                 slug: (title || "service").toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now(),
                 secretary_name: secretaryName,
+                secretary_email: secretaryEmail,
+                secretary_phone: secretaryPhone,
+                secretary_bio: secretaryBio,
                 secretary_company: secretaryCompany,
                 avatar_url: avatar?.url || "",
                 secretary_company_logo: companyLogo?.url || "",
                 certifications: certifications,
+                media: mediaData,
+                service_offerings: serviceOfferingsPayload
             };
-
-            if (editId) {
-                // Update Logic
-                payload.media = {
-                    deleteMany: {},
-                    create: mediaData
-                };
-                payload.service_offerings = {
-                    deleteMany: {},
-                    create: serviceOfferingsPayload
-                };
-            } else {
-                // Create Logic
-                payload.media = { create: mediaData };
-                payload.service_offerings = { create: serviceOfferingsPayload };
-            }
 
 
             console.log("Submitting Payload to Backend [EditMode=" + !!editId + "]:", JSON.stringify(payload, null, 2));
@@ -439,6 +441,7 @@ function CreateSpecialistContent() {
                                 onClick={() => {
                                     if (activeImageIndex !== null) {
                                         if (activeImageIndex === 3) document.getElementById('avatar-upload')?.click();
+                                        else if (activeImageIndex === 4) document.getElementById('logo-upload')?.click();
                                         else document.getElementById(`file-upload-${activeImageIndex}`)?.click();
                                     }
                                     setShowAssetModal(false);
@@ -558,18 +561,42 @@ function CreateSpecialistContent() {
                     <div className="space-y-4">
                         <h3 className="text-lg font-bold text-gray-900">Company Secretary</h3>
                         <div className="flex items-center gap-4">
-                            <div className="relative h-12 w-12 rounded-full overflow-hidden bg-gray-200">
+                            <div 
+                                onClick={() => openAssetSelector(3)}
+                                className="relative h-12 w-12 rounded-full overflow-hidden bg-gray-200 cursor-pointer group hover:ring-2 ring-blue-500 transition-all"
+                            >
                                 {avatar ? (
-                                    <Image src={avatar.url} alt="Avatar" fill className="object-cover" />
+                                    <Image src={avatar.url} alt="Avatar" fill className="object-cover group-hover:scale-105 transition-transform" />
                                 ) : (
                                     <div className="h-full w-full flex items-center justify-center text-gray-400"><User className="h-6 w-6" /></div>
                                 )}
+                                <div className="absolute inset-0 bg-black/20 hidden group-hover:flex items-center justify-center">
+                                    <Plus className="h-4 w-4 text-white" />
+                                </div>
                             </div>
+                            <input type="file" id="avatar-upload" className="hidden" accept="image/*"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        setIsAvatarUploading(true);
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+                                        try {
+                                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                setAvatar({ url: data.url, file_name: data.filename, mime_type: data.mimeType, file_size: data.size });
+                                            }
+                                        } finally { setIsAvatarUploading(false); }
+                                    }
+                                }}
+                            />
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h4 className="font-bold text-gray-900 text-sm">{secretaryName || "Secretary Name"}</h4>
                                     <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-medium">Active</span>
                                 </div>
+                                <div className="text-xs text-gray-500">{secretaryEmail || "secretary@example.com"}</div>
                                 <div className="text-xs text-gray-500">{secretaryCompany || "Company Name"}</div>
                                 <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                                     <span>250 Clients</span>
@@ -583,18 +610,47 @@ function CreateSpecialistContent() {
 
                         <div className="grid grid-cols-2 gap-8 text-xs text-gray-500">
                             <div className="space-y-4">
-                                <p>
-                                    A company secretary service founded by John, who believes that every company deserves clarity, confidence, and care in their compliance journey.
+                                <p className="whitespace-pre-wrap">
+                                    {secretaryBio || "A company secretary service founded by experts, providing clarity and care in your compliance journey."}
                                 </p>
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <h5 className="font-bold text-gray-900 mb-1">Firm</h5>
-                                    <div className="flex items-center gap-2">
-                                        <Building className="h-4 w-4 text-blue-800" />
-                                        <span>{secretaryCompany || "Corpsec Services Sdn Bhd"}</span>
+                                    <h5 className="font-bold text-gray-900 mb-2">Firm</h5>
+                                    <div className="flex items-center gap-3">
+                                        <div 
+                                            onClick={() => openAssetSelector(4)}
+                                            className="h-8 w-8 rounded bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:ring-2 ring-blue-500 transition-all"
+                                            title="Click to change Company Logo"
+                                        >
+                                            {companyLogo ? (
+                                                <Image src={companyLogo.url} alt="logo" fill className="object-cover" />
+                                            ) : (
+                                                <Building className="h-4 w-4 text-gray-400" />
+                                            )}
+                                        </div>
+                                        <input type="file" id="logo-upload" className="hidden" accept="image/*"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setIsLogoUploading(true);
+                                                    const formData = new FormData();
+                                                    formData.append("file", file);
+                                                    try {
+                                                        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                                        const data = await res.json();
+                                                        if (data.success) {
+                                                            setCompanyLogo({ url: data.url, file_name: data.filename, mime_type: data.mimeType, file_size: data.size });
+                                                        }
+                                                    } finally { setIsLogoUploading(false); }
+                                                }
+                                            }}
+                                        />
+                                        <div>
+                                            <div className="font-medium text-gray-900">{secretaryCompany || "Corpsec Services Sdn Bhd"}</div>
+                                            <p className="text-[10px] text-gray-500">2 Years providing Company Secretarial services</p>
+                                        </div>
                                     </div>
-                                    <p className="pl-6 mt-1 text-[10px]">2 Years providing Company Secretarial services</p>
                                 </div>
                                 <div>
                                     <h5 className="font-bold text-gray-900 mb-1">Certifications</h5>
@@ -714,70 +770,43 @@ function CreateSpecialistContent() {
                     {/* Secretary Profile Inputs (Added for completeness within the panel) */}
                     <div className="space-y-4 pt-4 border-t border-gray-100">
                         <h3 className="text-sm font-bold text-gray-900">Secretary Info</h3>
-                        <div className="flex gap-3 items-start">
-                            {/* Avatar Upload */}
-                            <div
-                                onClick={() => openAssetSelector(3)}
-                                className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-500 overflow-hidden relative group"
-                                title="Secretary Avatar"
-                            >
-                                {avatar ? <Image src={avatar.url} alt="av" fill className="object-cover" /> : <Upload className="h-4 w-4 text-gray-400" />}
-                                <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center text-[8px] text-white font-bold">Avatar</div>
-                                <input type="file" id="avatar-upload" className="hidden" accept="image/*"
-                                    onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            setIsAvatarUploading(true);
-                                            const formData = new FormData();
-                                            formData.append("file", file);
-                                            try {
-                                                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                                                const data = await res.json();
-                                                if (data.success) {
-                                                    setAvatar({ url: data.url, file_name: data.filename, mime_type: data.mimeType, file_size: data.size });
-                                                }
-                                            } finally { setIsAvatarUploading(false); }
-                                        }
-                                    }}
-                                />
-                            </div>
-
-                            {/* Company Logo Upload */}
-                            <div
-                                onClick={() => document.getElementById('logo-upload')?.click()}
-                                className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-500 overflow-hidden relative group"
-                                title="Company Logo"
-                            >
-                                {companyLogo ? <Image src={companyLogo.url} alt="logo" fill className="object-cover" /> : <Building className="h-4 w-4 text-gray-400" />}
-                                <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center text-[8px] text-white font-bold">Logo</div>
-                                {isLogoUploading && <div className="absolute inset-0 bg-white/50 flex items-center justify-center"><div className="w-3 h-3 border-2 border-blue-500 rounded-full animate-spin border-t-transparent"></div></div>}
-                                <input type="file" id="logo-upload" className="hidden" accept="image/*"
-                                    onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            setIsLogoUploading(true);
-                                            const formData = new FormData();
-                                            formData.append("file", file);
-                                            try {
-                                                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                                                const data = await res.json();
-                                                if (data.success) {
-                                                    setCompanyLogo({ url: data.url, file_name: data.filename, mime_type: data.mimeType, file_size: data.size });
-                                                }
-                                            } finally { setIsLogoUploading(false); }
-                                        }
-                                    }}
-                                />
-                            </div>
-
-                            <div className="flex-1 space-y-2">
+                        <div className="space-y-3">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-semibold text-gray-500 uppercase">Secretary Name</label>
                                 <input
                                     type="text"
                                     value={secretaryName}
                                     onChange={(e) => setSecretaryName(e.target.value)}
-                                    placeholder="Secretary Name"
+                                    placeholder="Full Name"
                                     className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0"
                                 />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase">Email</label>
+                                    <input
+                                        type="email"
+                                        value={secretaryEmail}
+                                        onChange={(e) => setSecretaryEmail(e.target.value)}
+                                        placeholder="Email Address"
+                                        className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase">Phone</label>
+                                    <input
+                                        type="text"
+                                        value={secretaryPhone}
+                                        onChange={(e) => setSecretaryPhone(e.target.value)}
+                                        placeholder="Phone Number"
+                                        className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-semibold text-gray-500 uppercase">Company Name</label>
                                 <input
                                     type="text"
                                     value={secretaryCompany}
@@ -786,29 +815,40 @@ function CreateSpecialistContent() {
                                     className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0"
                                 />
                             </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-semibold text-gray-500 uppercase">Secretary Bio</label>
+                                <textarea
+                                    value={secretaryBio}
+                                    onChange={(e) => setSecretaryBio(e.target.value)}
+                                    placeholder="Brief bio or about section..."
+                                    rows={4}
+                                    className="w-full text-xs text-black placeholder:text-gray-400 border-gray-200 rounded-md focus:border-black focus:ring-0 resize-none"
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Additional Offerings */}
-                    <div className="space-y-4 pt-4 border-t border-gray-100 relative">
+                    {/* Additional Offerings Selection */}
+                    <div className="space-y-4 pt-4 border-t border-gray-100">
                         <div className="space-y-2">
                             <label className="text-xs font-semibold text-gray-700">Additional Offerings (Select)</label>
                             <div className="relative">
                                 {/* Multi-Select Input Box */}
                                 <div
                                     onClick={() => setShowOfferingDropdown(!showOfferingDropdown)}
-                                    className="w-full min-h-10.5 border border-gray-200 rounded-md px-2 py-1.5 cursor-pointer bg-white flex flex-wrap gap-2 items-center hover:border-gray-300 transition-colors"
+                                    className="w-full min-h-[42px] border border-gray-200 rounded-md px-2 py-1.5 cursor-pointer bg-white flex flex-wrap gap-2 items-center hover:border-gray-300 transition-colors"
                                 >
                                     {offerings.length > 0 ? (
                                         offerings.map((off, i) => (
-                                            <div key={i} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-[11px] font-medium text-gray-700 border border-gray-200">
+                                            <div key={i} className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded text-[11px] font-medium text-blue-700 border border-blue-100">
                                                 <span>{off.title}</span>
                                                 <div
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        removeOffering(off.masterId);
+                                                        if (typeof off.masterId === 'string') removeOffering(off.masterId);
                                                     }}
-                                                    className="p-0.5 rounded-full hover:bg-gray-200 text-gray-500 hover:text-red-500 cursor-pointer"
+                                                    className="p-0.5 rounded-full hover:bg-blue-100 text-blue-500 hover:text-red-500 cursor-pointer"
                                                 >
                                                     <X className="h-3 w-3" />
                                                 </div>
@@ -823,10 +863,10 @@ function CreateSpecialistContent() {
 
                                 {/* Dropdown Menu */}
                                 {showOfferingDropdown && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto z-50">
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto z-[60]">
                                         {masterOfferings.length > 0 ? (
                                             masterOfferings.map((item) => {
-                                                const isSelected = offerings.some(o => o.masterId === item.id);
+                                                const isSelected = offerings.some(o => String(o.masterId) === String(item.id));
                                                 return (
                                                     <div
                                                         key={item.id}
@@ -851,66 +891,17 @@ function CreateSpecialistContent() {
                                                 );
                                             })
                                         ) : (
-                                            <div className="p-3 text-xs text-gray-400 text-center">Loading offerings...</div>
+                                            <div className="p-3 text-xs text-gray-400 text-center">No offerings available.</div>
                                         )}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Image Grid */}
-                        <div className="grid grid-cols-2 gap-4 auto-rows-[200px]">
-                            <div className="col-span-2 row-span-2 h-full">
-                                {/* Large Main Image */}
-                                <ImageUploadBox
-                                    image={images[0]?.url}
-                                    onUpload={(url) => {
-                                        updateImage(0, { url, file_name: "image_1", mime_type: "image/jpeg", file_size: 0 });
-                                    }}
-                                    onDelete={() => {
-                                        updateImage(0, null);
-                                    }}
-                                    label="Main Service Image"
-                                    height="h-full"
-                                    className="h-full"
-                                />
-                            </div>
-                            <div className="col-span-1 row-span-1">
-                                {/* Secondary Image 1 */}
-                                <ImageUploadBox
-                                    image={images[1]?.url}
-                                    onUpload={(url) => {
-                                        updateImage(1, { url, file_name: "image_2", mime_type: "image/jpeg", file_size: 0 });
-                                    }}
-                                    onDelete={() => {
-                                        updateImage(1, null);
-                                    }}
-                                    label="Side View 1"
-                                    height="h-full"
-                                    className="h-full"
-                                />
-                            </div>
-                            <div className="col-span-1 row-span-1">
-                                {/* Secondary Image 2 */}
-                                <ImageUploadBox
-                                    image={images[2]?.url}
-                                    onUpload={(url) => {
-                                        updateImage(2, { url, file_name: "image_3", mime_type: "image/jpeg", file_size: 0 });
-                                    }}
-                                    onDelete={() => {
-                                        updateImage(2, null);
-                                    }}
-                                    label="Side View 2"
-                                    height="h-full"
-                                    className="h-full"
-                                />
-                            </div>
-                        </div>
-
                         {/* Pricing Inputs for Selected Offerings */}
                         {offerings.length > 0 && (
-                            <div className="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                <label className="text-xs font-semibold text-gray-700">Set Prices</label>
+                            <div className="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200 mt-4">
+                                <label className="text-xs font-semibold text-gray-700">Set Prices for Selected Offerings</label>
                                 <div className="space-y-2">
                                     {offerings.map((off, i) => (
                                         <div key={i} className="flex items-center gap-2">
@@ -938,7 +929,6 @@ function CreateSpecialistContent() {
                             </div>
                         )}
                     </div>
-
                 </div>
 
                 <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3 sticky bottom-0 z-10">

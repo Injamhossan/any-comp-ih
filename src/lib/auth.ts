@@ -1,13 +1,11 @@
-
-import { PrismaAdapter } from "@auth/prisma-adapter"
 import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
-import { prisma } from "@/lib/db"
+import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
+import { getDataSource } from "@/lib/data-source"
+import { User } from "@/entities/User"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt"
   },
@@ -30,11 +28,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
-          }
-        }) as any;
+        const dataSource = await getDataSource();
+        const userRepo = dataSource.getRepository(User);
+
+        const user = await userRepo.findOneBy({ email: credentials.email });
 
         if (!user || !user.password) {
           throw new Error("Invalid credentials");
@@ -49,7 +46,12 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Invalid credentials");
         }
 
-        return user;
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        } as any;
       }
     })
   ],
@@ -58,22 +60,14 @@ export const authOptions: NextAuthOptions = {
         if (token && session.user) {
             session.user.id = token.id as string;
             session.user.role = token.role as string;
-            session.user.image = token.picture;
-            session.user.name = token.name;
         }
         return session;
     },
-    async jwt({ token, user, trigger, session }) {
-        // Handle initial sign-in and session updates
+    async jwt({ token, user }) {
         if (user) {
             token.id = user.id;
-            token.role = user.role;
+            token.role = (user as any).role;
         }
-
-        if (trigger === "update" && session) {
-            token = { ...token, ...session }
-        }
-
         return token;
     }
   }

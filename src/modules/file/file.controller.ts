@@ -1,46 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { NextResponse } from "next/server";
 
-export const uploadFile = async (req: NextRequest) => {
+export const uploadFile = async (req: Request) => {
   try {
     const formData = await req.formData();
-    const file = formData.get("file");
+    const file = formData.get("file") as File;
 
-    if (!file || typeof file === 'string') {
-      return NextResponse.json({ error: "No file received or file is a string." }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
-    const fileObject = file as File;
-    const arrayBuffer = await fileObject.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
     
-    // Sanitize filename
-    const sanitizedFilename = fileObject.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9.\-_]/g, '');
-    const filename = `${Date.now()}_${sanitizedFilename}`;
+    // Convert to Base64 Data URI
+    const base64 = buffer.toString('base64');
+    const dataUri = `data:${file.type};base64,${base64}`;
 
-    // Store in DB
-    const savedFile = await prisma.file.create({
-        data: {
-            filename: filename,
-            mimeType: fileObject.type,
-            data: buffer,
-            size: fileObject.size
-        }
-    });
-    
-    // The public URL for the file to be served via API
-    const downloadURL = `/api/files/${savedFile.id}`;
-
-    return NextResponse.json({ 
-        success: true, 
-        url: downloadURL,
-        filename: filename,
-        mimeType: fileObject.type,
-        size: fileObject.size,
-        id: savedFile.id
+    return NextResponse.json({
+      success: true,
+      url: dataUri, // This will be stored directly in the DB
+      filename: file.name,
+      mimeType: file.type,
+      size: file.size
     });
   } catch (error: any) {
-    console.error("DB Upload Error:", error);
-    return NextResponse.json({ error: error.message || "Upload failed" }, { status: 500 });
+    console.error("Upload Error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 };
