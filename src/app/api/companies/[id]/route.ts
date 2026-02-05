@@ -2,17 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-// BUT for security, we should ideally verify the user. 
-// Given the current setup, I'll assume we can just check if the company belongs to the user who is making the request.
-// Or effectively, we'll need to pass the user email/id in the body or header to verify ownership.
-
-// For now, let's just make a simple CRUD that checks ownership if possible, or just does the update.
-// Ideally, we'd have a session check.
-
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // params is a Promise in Next.js 15+ (App Router updates), but let's check current version.
-  // The user log shows "Next.js 16.1.4 (Turbopack)". In Next 15+, params is a promise.
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
      const { id } = await params;

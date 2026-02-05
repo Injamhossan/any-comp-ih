@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import fs from "fs/promises";
+import { prisma } from "@/lib/db";
 
 export const uploadFile = async (req: NextRequest) => {
   try {
@@ -18,32 +17,30 @@ export const uploadFile = async (req: NextRequest) => {
     // Sanitize filename
     const sanitizedFilename = fileObject.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9.\-_]/g, '');
     const filename = `${Date.now()}_${sanitizedFilename}`;
-    
-    // Set up upload directory (public/uploads)
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    
-    // Create directory if it doesn't exist
-    try {
-        await fs.access(uploadDir);
-    } catch {
-        await fs.mkdir(uploadDir, { recursive: true });
-    }
 
-    const filePath = path.join(uploadDir, filename);
-    await fs.writeFile(filePath, buffer);
-
-    // The public URL for the file
-    const downloadURL = `/uploads/${filename}`;
+    // Store in DB
+    const savedFile = await prisma.file.create({
+        data: {
+            filename: filename,
+            mimeType: fileObject.type,
+            data: buffer,
+            size: fileObject.size
+        }
+    });
+    
+    // The public URL for the file to be served via API
+    const downloadURL = `/api/files/${savedFile.id}`;
 
     return NextResponse.json({ 
         success: true, 
         url: downloadURL,
         filename: filename,
         mimeType: fileObject.type,
-        size: fileObject.size
+        size: fileObject.size,
+        id: savedFile.id
     });
   } catch (error: any) {
-    console.error("Local Upload Error:", error);
+    console.error("DB Upload Error:", error);
     return NextResponse.json({ error: error.message || "Upload failed" }, { status: 500 });
   }
 };

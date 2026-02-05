@@ -6,7 +6,6 @@ export async function GET(req: NextRequest) {
   try {
     const db = prisma as any;
     
-    // Fetch all registrations with user details
     const registrations = await db.companyRegistration.findMany({
         include: {
             user: {

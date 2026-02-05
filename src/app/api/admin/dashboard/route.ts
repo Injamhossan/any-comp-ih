@@ -39,14 +39,14 @@ export async function GET() {
         totalClients: clientsCount,
         totalRevenue: totalRevenue,
         activeOrders: ordersCount,
-        conversionRate: "3.2%" // Placeholder logic for now
+        conversionRate: "3.2%"
     };
 
     return NextResponse.json({ 
         success: true, 
         data: {
             stats,
-            recentActivity: messages, // Using messages as activity for now
+            recentActivity: messages,
             recentOrders: recentOrders
         } 
     });

@@ -6,7 +6,7 @@ export async function GET() {
     // Test the database connection
     const result: any = await prisma.$queryRaw`SELECT NOW()`;
     
-    // Also try to count specialists to ensure schema is pushed
+      
     const count = await prisma.specialist.count();
     
     return NextResponse.json({ 

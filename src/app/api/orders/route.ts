@@ -33,21 +33,19 @@ export async function POST(req: NextRequest) {
 
     // Use a transaction to ensure atomic execution: create order and update service statistics
     const order = await (prisma as any).$transaction(async (tx: any) => {
-      // 1. Create the new order record
       const newOrder = await tx.order.create({
         data: {
           specialistId,
-          userId: userId || null, // Optional
+          userId: userId || null,
           amount,
           status: "PENDING",
-          customerName, // Guest fields
+          customerName,
           customerEmail,
           customerPhone,
           requirements,
         },
       });
 
-      // 2. Increment the purchase count for the service provider (Company/Specialist)
       await tx.specialist.update({
         where: { id: specialistId },
         data: {
@@ -73,8 +71,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
     const specialistId = searchParams.get("specialistId");
-
-    // Require at least one filter parameter
     if (!userId && !specialistId) {
       return NextResponse.json(
         { success: false, message: "UserId or SpecialistId required" },
