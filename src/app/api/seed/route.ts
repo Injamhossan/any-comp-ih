@@ -80,6 +80,34 @@ export async function GET() {
         results.push("ℹ️ Platform Fees already exist");
     }
 
+    // 4. Seed Sample Specialist (for initial display)
+    const { Specialist } = await import("@/entities/Specialist");
+    const { VerificationStatus } = await import("@/entities/Enums");
+    const specialistRepo = dataSource.getRepository(Specialist);
+    const existingSpecialists = await specialistRepo.count();
+
+    if (existingSpecialists === 0) {
+        const sample = new Specialist();
+        sample.title = "Complete SDN BHD Registration";
+        sample.description = "Professional Sdn Bhd incorporation service. Includes name search, SSM registration, and digital copies of all documents.";
+        sample.base_price = 1500;
+        sample.final_price = 1950; // 30% markup approx
+        sample.duration_days = 5;
+        sample.secretary_name = "Ahmad Zaki";
+        sample.secretary_company = "AZ Corporate Services";
+        sample.secretary_email = "zaki@azservices.com";
+        sample.secretary_phone = "012-3456789";
+        // sample.secretary_license_no = "LS0012345"; // Not in entity
+        sample.verification_status = VerificationStatus.VERIFIED;
+        sample.is_draft = false;
+        sample.slug = "complete-sdn-bhd-registration";
+        
+        await specialistRepo.save(sample);
+        results.push("✅ Seeded Sample Specialist Service");
+    } else {
+        results.push("ℹ️ Specialist Services already exist");
+    }
+
     return NextResponse.json({ success: true, messages: results });
   } catch (error: any) {
     console.error("Seed Error:", error);
