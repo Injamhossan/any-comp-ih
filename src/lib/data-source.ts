@@ -11,7 +11,7 @@ import { Order } from "@/entities/Order";
 export const AppDataSource = new DataSource({
     type: "postgres",
     url: process.env.DATABASE_URL,
-    synchronize: true, // Note: Unsafe for production, consider migrations
+    synchronize: true, // Only for dev, ideally false in prod
     logging: false,
     entities: [
         Specialist, Media, ServiceOffering, ServiceOfferingMasterList,
@@ -25,26 +25,23 @@ export const AppDataSource = new DataSource({
 const globalForTypeORM = global as unknown as { dataSource: DataSource };
 
 export const getDataSource = async () => {
-    if (globalForTypeORM.dataSource && globalForTypeORM.dataSource.isInitialized) {
+    if (globalForTypeORM.dataSource?.isInitialized) {
         return globalForTypeORM.dataSource;
     }
 
-    if (!AppDataSource.isInitialized) {
-        try {
-            await AppDataSource.initialize();
-            console.log("✅ Database initialized successfully");
-            if (Array.isArray(AppDataSource.options.entities)) {
-                console.log("Entities registered:", AppDataSource.options.entities.map((e: any) => (typeof e === 'function' ? e.name : e)));
-            }
-        } catch (error) {
-            console.error("❌ Database initialization failed:", error);
-            throw error;
+    if (AppDataSource.isInitialized) {
+        return AppDataSource;
+    }
+
+    try {
+        await AppDataSource.initialize();
+        console.log("✅ Database initialized successfully");
+        if (process.env.NODE_ENV !== "production") {
+             globalForTypeORM.dataSource = AppDataSource;
         }
+        return AppDataSource;
+    } catch (error) {
+        console.error("❌ Database initialization failed:", error);
+        throw error;
     }
-    
-    if (process.env.NODE_ENV !== "production") {
-        globalForTypeORM.dataSource = AppDataSource;
-    }
-    
-    return AppDataSource;
 };

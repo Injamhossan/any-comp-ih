@@ -24,34 +24,46 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        console.log("Attempting login for:", credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
+          console.log("Missing credentials");
           throw new Error("Invalid credentials");
         }
 
-        const dataSource = await getDataSource();
-        const userRepo = dataSource.getRepository(User);
+        try {
+          const dataSource = await getDataSource();
+          const userRepo = dataSource.getRepository(User);
 
-        const user = await userRepo.findOneBy({ email: credentials.email });
+          const user = await userRepo.findOneBy({ email: credentials.email });
+          console.log("User found:", !!user);
 
-        if (!user || !user.password) {
-          throw new Error("Invalid credentials");
-        }
-
-        const isCorrectPassword = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isCorrectPassword) {
+          if (!user || !user.password) {
+            console.log("User not found or has no password");
             throw new Error("Invalid credentials");
-        }
+          }
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        } as any;
+          const isCorrectPassword = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+          console.log("Password match:", isCorrectPassword);
+
+          if (!isCorrectPassword) {
+              console.log("Password mismatch");
+              throw new Error("Invalid credentials");
+          }
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          } as any;
+        } catch (error) {
+          console.error("Auth error:", error);
+          throw error;
+        }
       }
     })
   ],
